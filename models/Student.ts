@@ -31,6 +31,11 @@ const StudentSchema = new mongoose.Schema({
     required: [true, 'At least three images are required'],
     validate: [(val: string[]) => val.length === 3, 'Exactly three images are required'],
   },
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

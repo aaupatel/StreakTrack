@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import Image from "next/image";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -177,7 +178,11 @@ export default function RegisterStudent() {
                 <FormItem>
                   <FormLabel>Student Contact Number</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter student contact" type="tel" {...field} />
+                    <Input
+                      placeholder="Enter student contact"
+                      type="tel"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -191,7 +196,11 @@ export default function RegisterStudent() {
                 <FormItem>
                   <FormLabel>Father&apos;s Contact Number</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter father's contact" type="tel" {...field} />
+                    <Input
+                      placeholder="Enter father's contact"
+                      type="tel"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -209,9 +218,11 @@ export default function RegisterStudent() {
                 >
                   {images[index] ? (
                     <div className="relative group">
-                      <img
+                      <Image
                         src={images[index]}
                         alt={`Student ${index + 1}`}
+                        width={300}
+                        height={300}
                         className="w-full h-full object-cover"
                       />
                       <button

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Logo } from "@/components/ui/logo";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -85,7 +86,7 @@ export default function CoAdminSetupPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="max-w-md w-full space-y-8 p-8">
         <div className="flex flex-col items-center">
-          <Camera className="h-12 w-12 text-primary mb-2" />
+          <Logo className="h-16 w-16 text-primary mb-2" />
           <h2 className="text-center text-3xl font-bold tracking-tight">
             Complete Your Account Setup
           </h2>
@@ -117,10 +118,10 @@ export default function CoAdminSetupPage() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="password" 
+                    <Input
+                      type="password"
                       placeholder="Create a password"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -135,10 +136,10 @@ export default function CoAdminSetupPage() {
                 <FormItem>
                   <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="password" 
+                    <Input
+                      type="password"
                       placeholder="Confirm your password"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -153,10 +154,10 @@ export default function CoAdminSetupPage() {
                 <FormItem>
                   <FormLabel>Contact Number</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="tel" 
+                    <Input
+                      type="tel"
                       placeholder="Enter your contact number"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -164,11 +165,7 @@ export default function CoAdminSetupPage() {
               )}
             />
 
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Setting up..." : "Complete Setup"}
             </Button>
           </form>

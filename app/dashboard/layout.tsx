@@ -13,6 +13,7 @@ import {
   Camera
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
+import { Logo } from "@/components/ui/logo";
 
 export default function DashboardLayout({
   children,
@@ -65,9 +66,10 @@ export default function DashboardLayout({
       `}
       >
         <div className="flex flex-col h-full">
-          <div className="h-16 flex items-center gap-2 px-6 border-b border-gray-200">
-            <Camera className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-semibold text-gray-900">StreakTrack</h1>
+          <div className="h-16 flex items-center justify-center gap-2 px-6 border-b border-gray-200">
+            <Logo className="h-16 w-16 text-primary" />
+            {/* <Camera className="h-6 w-6 text-primary" /> */}
+            {/* <h1 className="text-xl font-semibold text-gray-900">StreakTrack</h1> */}
           </div>
 
           <nav className="flex-1 px-4 py-4 space-y-1">

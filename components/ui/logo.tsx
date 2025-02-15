@@ -1,3 +1,4 @@
+import logoIcon from '../../public/logo.png';
 import Image from 'next/image';
 
 interface LogoProps {
@@ -8,7 +9,7 @@ interface LogoProps {
 export function Logo({ className = "", size = 40 }: LogoProps) {
   return (
     <Image
-      src="/logo.png"
+      src={logoIcon}
       alt="StreakTrack Logo"
       width={size}
       height={size}

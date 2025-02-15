@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Camera, Users, Calendar, BarChart } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
 
 export default function Home() {
   return (
@@ -8,13 +9,14 @@ export default function Home() {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
           <div className="inline-flex flex-col items-center gap-4">
-            <Camera className="h-16 w-16 text-primary" />
-            <h1 className="text-5xl font-bold text-gray-900">
-              Welcome to StreakTrack
+            <Logo className="h-24 w-24 text-primary" />
+            <h1 className="text-5xl font-semibold text-gray-900">
+              Welcome to <span className='text-yellow-300 font-bold'>StreakTrack</span>
             </h1>
           </div>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto mt-4">
-            A modern face detection-based attendance tracking system for educational institutions
+            A modern face detection-based attendance tracking system for
+            educational institutions
           </p>
         </div>
 

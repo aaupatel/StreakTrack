@@ -25,12 +25,28 @@ export function Navbar() {
             </Link>
           </div>
 
-          <div className="flex items-center">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="flex items-center">
+              <span className="text-gray-600 hover:text-gray-900">Home</span>
+            </Link>
+            <Link href="/about" className="flex items-center">
+              <span className="text-gray-600 hover:text-gray-900">
+                About Us
+              </span>
+            </Link>
+            <Link href="/contact" className="flex items-center">
+              <span className="text-gray-600 hover:text-gray-900">
+                Contact Us
+              </span>
+            </Link>
             {session ? (
               <>
-                <span className="text-gray-600 mr-4">
-                  {session.user?.name}
-                </span>
+                <Link href="/dashboard" className="flex items-center">
+                  <span className="text-gray-600 hover:text-gray-900">
+                    Dashboard
+                  </span>
+                </Link>
+                <span className="text-gray-600 mr-4">{session.user?.name}</span>
                 <button
                   onClick={() => signOut()}
                   className="text-gray-600 hover:text-gray-900"

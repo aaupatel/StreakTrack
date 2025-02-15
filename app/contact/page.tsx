@@ -11,7 +11,8 @@ export default function ContactPage() {
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Contact Us</h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Have questions? We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
+            Have questions? We&apos;d love to hear from you. Send us a message
+            and we&apos;ll respond as soon as possible.
           </p>
         </div>
 
@@ -62,14 +63,14 @@ export default function ContactPage() {
                   <Mail className="w-6 h-6 text-primary mt-1" />
                   <div>
                     <h3 className="font-semibold">Email</h3>
-                    <p className="text-gray-600">support@streaktrack.com</p>
+                    <p className="text-gray-600">ayushpatidar2810@gmail.com</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-4">
                   <Phone className="w-6 h-6 text-primary mt-1" />
                   <div>
                     <h3 className="font-semibold">Phone</h3>
-                    <p className="text-gray-600">+1 (555) 123-4567</p>
+                    <p className="text-gray-600">+91 62632 77425</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-4">
@@ -77,9 +78,10 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold">Address</h3>
                     <p className="text-gray-600">
-                      123 Education Street<br />
-                      Tech Valley, CA 94025<br />
-                      United States
+                      135-LIG/B, Sector B<br />
+                      Sonagiri, Bhopal 462021
+                      <br />
+                      India
                     </p>
                   </div>
                 </div>
@@ -89,7 +91,7 @@ export default function ContactPage() {
             <Card className="p-6 bg-primary text-primary-foreground">
               <h3 className="text-xl font-semibold mb-4">Office Hours</h3>
               <div className="space-y-2">
-                <p>Monday - Friday: 9:00 AM - 6:00 PM</p>
+                <p>Monday - Friday: 10:00 AM - 8:00 PM</p>
                 <p>Saturday: 10:00 AM - 4:00 PM</p>
                 <p>Sunday: Closed</p>
               </div>
