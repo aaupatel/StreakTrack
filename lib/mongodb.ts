@@ -14,6 +14,7 @@ if (!cached) {
 
 async function connectDB() {
   if (cached.conn) {
+    console.log("Already connected to the database");
     return cached.conn;
   }
 
@@ -23,6 +24,7 @@ async function connectDB() {
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      console.log("Database connected successfully");
       return mongoose;
     });
   }

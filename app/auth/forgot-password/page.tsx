@@ -34,7 +34,6 @@ export default function ForgotPasswordPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
     try {
-      // Send reset email (replace with your API endpoint)
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         body: JSON.stringify(values),

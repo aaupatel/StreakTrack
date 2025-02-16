@@ -3,7 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from "./logo";
+import { Button } from "./button";
+import { HelpCircle, LogOut, Settings, User } from "lucide-react";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -39,21 +49,61 @@ export function Navbar() {
                 Contact Us
               </span>
             </Link>
+
             {session ? (
-              <>
-                <Link href="/dashboard" className="flex items-center">
-                  <span className="text-gray-600 hover:text-gray-900">
-                    Dashboard
-                  </span>
-                </Link>
-                <span className="text-gray-600 mr-4">{session.user?.name}</span>
-                <button
-                  onClick={() => signOut()}
-                  className="text-gray-600 hover:text-gray-900"
-                >
-                  Sign out
-                </button>
-              </>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-10 w-10 rounded-full"
+                  >
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage
+                        src={session.user?.image || "/default-avatar.png"}
+                        alt={session.user?.name}
+                      />
+                      <AvatarFallback>
+                        {session.user?.name?.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end">
+                  <div className="flex items-center gap-2 p-2">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">
+                        {session.user?.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {session.user?.email}
+                      </p>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="cursor-pointer">
+                      <User className="mr-2 h-4 w-4" /> Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings" className="cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" /> Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/help" className="cursor-pointer">
+                      <HelpCircle className="mr-2 h-4 w-4" /> Help
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => signOut()}
+                    className="cursor-pointer"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" /> Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Link
                 href="/auth/login"

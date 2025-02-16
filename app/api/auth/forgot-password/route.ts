@@ -14,15 +14,15 @@ export async function POST(req: Request) {
 
         // Generate a reset token
         const resetToken = crypto.randomBytes(32).toString("hex");
-        user.resetToken = resetToken;
-        user.resetTokenExpiry = Date.now() + 3600000; // 1-hour expiry
+        user.resetPasswordToken = resetToken;
+        user.resetPasswordExpires = Date.now() + 3600000; // 1-hour expiry
         await user.save();
 
-        const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/auth/reset-password?token=${resetToken}`;
-        await sendPasswordResetEmail(email, resetLink);
+        await sendPasswordResetEmail(email, resetToken);
 
         return NextResponse.json({ message: "Reset link sent" }, { status: 200 });
     } catch (error) {
         return NextResponse.json({ error: "Error sending email" }, { status: 500 });
     }
 }
+
