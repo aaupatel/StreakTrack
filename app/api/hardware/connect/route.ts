@@ -1,38 +1,32 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import connectDB from "@/lib/mongodb";
 import Organization from "@/models/Organization";
+import Device from "@/models/Device";
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { deviceId, name } = await request.json();
+    const { organizationId, deviceId } = await req.json();
+    console.log("Hardware Connection Request:");
+    console.log("Organization ID:", organizationId);
+    console.log("Device ID:", deviceId);
 
     await connectDB();
+    console.log("Database connected successfully");
 
-    // Update device status
-    const organization = await Organization.findOneAndUpdate(
-      { "devices.deviceId": deviceId },
-      { 
-        $set: { 
-          "devices.$.status": "online",
-          "devices.$.lastSeen": new Date(),
-        }
-      },
+    // Update device's lastSeen
+    const device = await Device.findOneAndUpdate(
+      { _id: deviceId }, // Use deviceId to find the Device document
+      { lastSeen: new Date(), status: 'online' }, // Update lastSeen and status
       { new: true }
     );
 
-    if (!organization) {
-      return NextResponse.json(
-        { error: "Device not found" },
-        { status: 404 }
-      );
+    if (!device) {
+      return NextResponse.json({ message: "Device not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ message: "Device connected successfully" });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Failed to connect device" },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Device connected" }, { status: 200 });
+  } catch (error) {
+    console.error("Error connecting device:", error);
+    return NextResponse.json({ message: "Error connecting device" }, { status: 500 });
   }
 }

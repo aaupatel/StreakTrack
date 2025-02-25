@@ -5,78 +5,58 @@ import connectDB from "@/lib/mongodb";
 import Organization from "@/models/Organization";
 import { handleApiError, validateRequest } from "@/lib/error-handler";
 import { deviceSchema } from "@/lib/validation-schemas";
+import { authOptions } from "@/lib/auth";
+import Device from "@/models/Device";
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.organizationId || !['admin', 'co-admin'].includes(session.user.role!)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const data = await request.json();
-    const validatedData = validateRequest(data, deviceSchema);
+    const { name, location } = await request.json();
 
     await connectDB();
 
-    // Check if organization has reached device limit
-    const organization = await Organization.findById(session.user.organizationId);
-    if (!organization) {
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-    }
-
-    if (organization.devices.length >= organization.settings.maxDevices) {
-      return NextResponse.json(
-        { error: "Maximum device limit reached" },
-        { status: 400 }
-      );
-    }
-
-    // Check if device already exists
-    const existingDevice = await Organization.findOne({
-      _id: session.user.organizationId,
-      'devices.deviceId': validatedData.deviceId
-    });
-
+    // Check if device with the same name already exists in the organization
+    const existingDevice = await Device.findOne({ name, organizationId: session.user.organizationId });
     if (existingDevice) {
       return NextResponse.json(
-        { error: "Device ID already exists" },
+        { message: "Device with this name already exists in your organization" },
         { status: 400 }
       );
     }
+    
+    // Create new device
+    const newDevice = await Device.create({
+      name,
+      organizationId: session.user.organizationId,
+      location,
+    });
 
-    // Add new device
-    const updatedOrg = await Organization.findByIdAndUpdate(
+    // Update organization to add the new device ID
+    await Organization.findByIdAndUpdate(
       session.user.organizationId,
-      {
-        $push: {
-          devices: {
-            ...validatedData,
-            status: 'offline',
-            lastSeen: new Date(),
-            settings: {
-              captureInterval: parseInt(process.env.HARDWARE_DEVICE_INTERVAL || "5000"),
-              batchSize: parseInt(process.env.MAX_BATCH_SIZE || "50"),
-              enabled: true
-            }
-          }
-        }
-      },
+      { $push: { devices: newDevice._id } },
       { new: true }
     );
 
-    return NextResponse.json({ 
-      message: "Device added successfully",
-      device: updatedOrg.devices[updatedOrg.devices.length - 1]
-    });
-  } catch (error) {
-    const { error: errorMessage, status } = handleApiError(error);
-    return NextResponse.json({ error: errorMessage }, { status });
+    return NextResponse.json(
+      { message: "Device added successfully" },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to add device" },
+      { status: 500 }
+    );
   }
 }
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.organizationId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -84,50 +64,57 @@ export async function GET(request: Request) {
     await connectDB();
 
     const organization = await Organization.findById(session.user.organizationId);
+
+    const devices = await Device.find().populate("organizationId");
+
     if (!organization) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 
-    return NextResponse.json(organization.devices || []);
-  } catch (error) {
-    const { error: errorMessage, status } = handleApiError(error);
-    return NextResponse.json({ error: errorMessage }, { status });
-  }
-}
-
-export async function PATCH(request: Request) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.organizationId || !['admin', 'co-admin'].includes(session.user.role!)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const data = await request.json();
-    const { deviceId, settings } = data;
-
-    await connectDB();
-
-    const organization = await Organization.findOneAndUpdate(
-      {
-        _id: session.user.organizationId,
-        'devices.deviceId': deviceId
-      },
-      {
-        $set: {
-          'devices.$.settings': settings
-        }
-      },
-      { new: true }
+    return NextResponse.json(devices || []);
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch devices" },
+      { status: 500 }
     );
-
-    if (!organization) {
-      return NextResponse.json({ error: "Device not found" }, { status: 404 });
-    }
-
-    const updatedDevice = organization.devices.find(d => d.deviceId === deviceId);
-    return NextResponse.json(updatedDevice);
-  } catch (error) {
-    const { error: errorMessage, status } = handleApiError(error);
-    return NextResponse.json({ error: errorMessage }, { status });
   }
 }
+
+// export async function PATCH(request: Request) {
+//   try {
+//     const session = await getServerSession();
+//     if (!session?.user?.organizationId || !['admin', 'co-admin'].includes(session.user.role!)) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
+
+//     const data = await request.json();
+//     const { deviceId, settings } = data;
+
+//     await connectDB();
+
+//     const organization = await Organization.findOneAndUpdate(
+//       {
+//         _id: session.user.organizationId,
+//         'devices.deviceId': deviceId
+//       },
+//       {
+//         $set: {
+//           'devices.$.settings': settings
+//         }
+//       },
+//       { new: true }
+//     );
+
+//     if (!organization) {
+//       return NextResponse.json({ error: "Device not found" }, { status: 404 });
+//     }
+
+//     const updatedDevice = organization.devices.find(d => d.deviceId === deviceId);
+//     return NextResponse.json(updatedDevice);
+//   } catch (error: any) {
+//     return NextResponse.json(
+//       { error: error.message || "Failed to add device" },
+//       { status: 500 }
+//     );
+//   }
+// }

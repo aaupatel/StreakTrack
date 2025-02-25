@@ -33,7 +33,7 @@ export default function DashboardLayout({
     { name: "Attendance", href: "/dashboard/attendance", icon: CalendarCheck2 },
     { name: "Realtime Attendance", href: "/dashboard/attendance/realtime", icon: Cctv,},
     { name: "Register Student", href: "/dashboard/register-student", icon: UserPlus,},
-    { name: "Members", href: "/dashboard/members", icon: UserPlus },
+    // { name: "Members", href: "/dashboard/members", icon: UserPlus },
     { name: "Hardware Setup", href: "/dashboard/hardware", icon: PackagePlusIcon, },
   ];
 
@@ -48,7 +48,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Mobile sidebar */}
-      <div className="lg:hidden">
+      <div className="lg:hidden pt-16">
         <div
           className="fixed inset-0 bg-gray-900/80 z-40"
           style={{ display: sidebarOpen ? "block" : "none" }}
@@ -59,15 +59,15 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside
         className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 
+        fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 
         transform transition-transform duration-200 ease-in-out lg:translate-x-0
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}
       >
-        <div className="flex flex-col h-full">
-          <div className="h-16 flex items-center justify-center gap-2 px-6 border-b border-gray-200">
+        <div className="flex flex-col h-full pt-16">
+          {/* <div className="h-16 flex items-center justify-center gap-2 px-6 border-b border-gray-200">
             <Logo className="h-16 w-16 text-primary" />
-          </div>
+          </div> */}
 
           <nav className="flex-1 px-4 py-4 space-y-1">
             {navigation.map((item) => {

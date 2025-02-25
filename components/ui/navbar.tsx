@@ -31,11 +31,11 @@ export function Navbar() {
           <div className="flex">
             <Link href="/" className="flex items-center">
               <Logo className="mr-2" />
-              <span className="font-semibold text-xl">StreakTrack</span>
+              <span className="font-semibold text-xl sm:block hidden">StreakTrack</span>
             </Link>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center sm:gap-4 gap-1 sm:text-base text-xs">
             <Link href="/" className="flex items-center">
               <span className="text-gray-600 hover:text-gray-900">Home</span>
             </Link>

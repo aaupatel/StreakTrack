@@ -15,6 +15,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
@@ -27,6 +34,16 @@ const formSchema = z.object({
   contactNo: z.string().min(10, "Contact number must be at least 10 characters"),
   fatherContactNo: z.string().min(10, "Father's contact number must be at least 10 characters"),
 });
+
+const engineeringBranches = [
+  "Computer Science Engineering",
+  "Information Technology",
+  "Electronics and Communication Engineering",
+  "Electrical Engineering",
+  "Mechanical Engineering",
+  "Civil Engineering",
+  "Agricultural Engineering",
+];
 
 export default function RegisterStudent() {
   const [images, setImages] = useState<string[]>([]);
@@ -148,9 +165,23 @@ export default function RegisterStudent() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Branch</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter branch name" {...field} />
-                </FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select branch" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {engineeringBranches.map((branch) => (
+                      <SelectItem key={branch} value={branch}>
+                        {branch}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}

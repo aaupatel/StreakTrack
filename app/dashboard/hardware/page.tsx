@@ -41,13 +41,14 @@ import {
 } from "lucide-react";
 
 const deviceFormSchema = z.object({
-  deviceId: z.string().min(2, "Device ID is required"),
   name: z.string().min(2, "Device name is required"),
+  location: z.string().min(2, "Device location is required"),
 });
 
 interface Device {
-  deviceId: string;
+  _id: string;
   name: string;
+  location: string;
   status: "online" | "offline";
   lastSeen?: string;
 }
@@ -60,8 +61,8 @@ export default function HardwarePage() {
   const form = useForm<z.infer<typeof deviceFormSchema>>({
     resolver: zodResolver(deviceFormSchema),
     defaultValues: {
-      deviceId: "",
       name: "",
+      location: "",
     },
   });
 
@@ -128,12 +129,12 @@ export default function HardwarePage() {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <FormField
                     control={form.control}
-                    name="deviceId"
+                    name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Device ID</FormLabel>
+                        <FormLabel>Device Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter device ID" {...field} />
+                          <Input placeholder="Enter device Name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -141,12 +142,12 @@ export default function HardwarePage() {
                   />
                   <FormField
                     control={form.control}
-                    name="name"
+                    name="location"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Device Name</FormLabel>
+                        <FormLabel>Device Location</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter device name" {...field} />
+                          <Input placeholder="Enter device location" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -168,14 +169,15 @@ export default function HardwarePage() {
           <div className="space-y-4">
             {devices.map((device) => (
               <div
-                key={device.deviceId}
+                key={device.name}
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
               >
                 <div className="flex items-center gap-4">
                   <Camera className="h-6 w-6 text-gray-400" />
                   <div>
                     <p className="font-medium">{device.name}</p>
-                    <p className="text-sm text-gray-500">ID: {device.deviceId}</p>
+                    <p className="text-sm text-gray-500">ID: {device._id}</p>
+                    <p className="text-sm text-gray-500">Location: {device.location}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -186,7 +188,7 @@ export default function HardwarePage() {
                     <span className={`text-sm ${
                       device.status === "online" ? "text-green-500" : "text-gray-500"
                     }`}>
-                      {device.status.toUpperCase()}
+                      {device.status}
                     </span>
                   </div>
                   <Power className="h-5 w-5 text-gray-400" />
@@ -225,7 +227,7 @@ export default function HardwarePage() {
         </Card>
       </div>
 
-      <Card className="p-6">
+      {/* <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Raspberry Pi Code</h2>
           <Button variant="outline" size="sm">
@@ -289,7 +291,7 @@ if __name__ == "__main__":
     asyncio.run(main())`}</code>
           </pre>
         </div>
-      </Card>
+      </Card> */}
     </div>
   );
 }

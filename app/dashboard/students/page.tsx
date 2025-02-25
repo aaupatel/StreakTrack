@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import Image from "next/image";
 
 interface Student {
   _id: string;
@@ -19,6 +20,7 @@ interface Student {
   enrollmentNo: string;
   contactNo: string;
   fatherName: string;
+  images: string[];
 }
 
 export default function StudentsPage() {
@@ -64,6 +66,7 @@ export default function StudentsPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Photo</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Enrollment No.</TableHead>
               <TableHead>Branch</TableHead>
@@ -74,6 +77,18 @@ export default function StudentsPage() {
           <TableBody>
             {filteredStudents.map((student) => (
               <TableRow key={student._id}>
+                <TableCell>
+                  {student.images?.[0] && (
+                    <div className="relative w-10 h-10 rounded-full overflow-hidden">
+                      <Image
+                        src={student.images[0]}
+                        alt={student.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                </TableCell>
                 <TableCell className="font-medium">{student.name}</TableCell>
                 <TableCell>{student.enrollmentNo}</TableCell>
                 <TableCell>{student.branch}</TableCell>

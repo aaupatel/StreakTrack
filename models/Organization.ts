@@ -1,42 +1,5 @@
 import mongoose from 'mongoose';
 
-const DeviceSchema = new mongoose.Schema({
-  deviceId: {
-    type: String,
-    required: true,
-  },
-  name: {
-    type: String,
-    required: true,
-  },
-  status: {
-    type: String,
-    enum: ['online', 'offline'],
-    default: 'offline',
-  },
-  lastSeen: Date,
-  location: {
-    type: String,
-    required: true,
-  },
-  ipAddress: String,
-  version: String,
-  settings: {
-    captureInterval: {
-      type: Number,
-      default: 5000, // 5 seconds
-    },
-    batchSize: {
-      type: Number,
-      default: 50,
-    },
-    enabled: {
-      type: Boolean,
-      default: true,
-    },
-  }
-});
-
 const OrganizationSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -57,7 +20,10 @@ const OrganizationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   }],
-  devices: [DeviceSchema],
+  devices: [{ // Use an array of ObjectIds referencing the Device model
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Device', // This is the crucial change
+  }],
   apiKey: {
     type: String,
     required: true,
@@ -82,11 +48,5 @@ const OrganizationSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
-
-// Compound index for unique device IDs within an organization
-OrganizationSchema.index(
-  { 'devices.deviceId': 1 }, 
-  { unique: true, sparse: true }
-);
 
 export default mongoose.models.Organization || mongoose.model('Organization', OrganizationSchema);

@@ -1,33 +1,80 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { WebSocketServer } from "ws";
+import { WebSocketServer, WebSocket } from "ws";
+import Device from "@/models/Device";
+import connectDB from "@/lib/mongodb";
+import Student from "@/models/Student";
 
 let wss: WebSocketServer | null = null;
+const clients = new Map<string, WebSocket>();
 
-export function GET(request: Request) {
-  const session = getServerSession();
-  if (!session) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+export async function GET(request: Request) {
+  console.log("WebSocket server running on port 3001");
 
-  // Upgrade the HTTP connection to WebSocket
   if (!wss) {
-    wss = new WebSocketServer({ noServer: true });
-    
-    // Handle WebSocket connections
-    wss.on("connection", (ws) => {
-      ws.on("message", (message) => {
-        // Broadcast messages to all connected clients
-        wss?.clients.forEach((client) => {
-          if (client !== ws && client.readyState === WebSocket.OPEN) {
-            client.send(message.toString());
+    wss = new WebSocketServer({ port: 3001 });
+
+    wss.on("connection", (ws, req) => {
+      const url = new URL(req.url!, `http://${req.headers.host}`);
+      const deviceId = url.searchParams.get("deviceId");
+      const organizationId = url.searchParams.get("organizationId");
+
+      if (!deviceId) {
+        ws.close(1003, "Missing deviceId");
+        return;
+      }
+
+      if (!organizationId) {
+        ws.close(1003, "Missing organizationId");
+        return;
+      }
+
+      clients.set(deviceId, ws);
+      console.log(`Device ${deviceId} connected`);
+
+      connectDB().then(async () => {
+        try {
+          await Device.findOneAndUpdate(
+            { _id: deviceId },
+            { status: "online" }
+          );
+          console.log(`Device ${deviceId} status updated to online.`);
+
+          // Fetch and send student data
+          const students = await Student.find({ organizationId: organizationId });
+          // console.log(JSON.stringify({ students: students }));
+          // ws.send(JSON.stringify({ students: students })); // Send data as JSON
+        } catch (error) {
+          console.error(`Error updating device ${deviceId} status or fetching students:`, error);
+          ws.send(JSON.stringify({ error: "Error fetching data" }));
+        }
+      });
+
+      ws.on("close", async () => {
+        clients.delete(deviceId);
+        console.log(`Device ${deviceId} disconnected`);
+
+        connectDB().then(async () => {
+          try {
+            await Device.findOneAndUpdate(
+              { _id: deviceId },
+              { status: "offline" }
+            );
+            console.log(`Device ${deviceId} status updated to offline.`);
+          } catch (error) {
+            console.error(`Error updating device ${deviceId} status:`, error);
           }
         });
+      });
+
+      ws.on("message", (message) => {
+        console.log(`Received message from ${deviceId}: ${message}`);
+      });
+
+      ws.on("error", (error) => {
+        console.error(`WebSocket error for device ${deviceId}:`, error);
       });
     });
   }
 
-  // Return upgrade response
-  const { socket, response } = Deno.upgradeWebSocket(request);
-  return response;
+  return NextResponse.json({ success: true });
 }

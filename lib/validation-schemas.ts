@@ -11,7 +11,6 @@ export const memberSchema = z.object({
 });
 
 export const deviceSchema = z.object({
-  deviceId: z.string().min(2, 'Device ID is required'),
   name: z.string().min(2, 'Device name is required'),
   location: z.string().min(2, 'Location is required'),
   ipAddress: z.string().optional(),
@@ -25,5 +24,5 @@ export const deviceSchema = z.object({
 
 export const attendanceSchema = z.object({
   memberId: z.string().min(1, 'Member ID is required'),
-  deviceId: z.string().min(1, 'Device ID is required'),
+  // deviceId: z.string().min(1, 'Device ID is required'),
 });
