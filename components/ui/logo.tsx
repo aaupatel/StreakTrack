@@ -6,7 +6,7 @@ interface LogoProps {
   size?: number;
 }
 
-export function Logo({ className = "", size = 40 }: LogoProps) {
+export function Logo({ className = "", size = 100 }: LogoProps) {
   return (
     <Image
       src={logoIcon}

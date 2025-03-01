@@ -8,6 +8,21 @@ declare module 'next-auth' {
       role?: 'admin' | 'co-admin';
       organizationName?: string;
     } & DefaultSession['user'];
+    organization?: {
+      _id: string;
+      name: string;
+      type: string;
+      admin: string;
+      coAdmins: string[];
+      apiKey: string;
+      devices: string[];
+      settings: {
+        maxDevices: number;
+        attendanceWindow: number;
+        autoMarkAbsent: boolean;
+      };
+      createdAt: Date;
+    };
   }
 
   interface User {
@@ -15,6 +30,21 @@ declare module 'next-auth' {
     organizationId?: string;
     role?: 'admin' | 'co-admin';
     organizationName?: string;
+    organization?: {
+      _id: string;
+      name: string;
+      type: string;
+      admin: string;
+      coAdmins: string[];
+      apiKey: string;
+      devices: string[];
+      settings: {
+        maxDevices: number;
+        attendanceWindow: number;
+        autoMarkAbsent: boolean;
+      };
+      createdAt: Date;
+    };
   }
 }
 
@@ -24,5 +54,20 @@ declare module 'next-auth/jwt' {
     organizationId?: string;
     role?: 'admin' | 'co-admin';
     organizationName?: string;
+    organization?: {
+      _id: string;
+      name: string;
+      type: string;
+      admin: string;
+      coAdmins: string[];
+      apiKey: string;
+      devices: string[];
+      settings: {
+        maxDevices: number;
+        attendanceWindow: number;
+        autoMarkAbsent: boolean;
+      };
+      createdAt: Date;
+    };
   }
 }

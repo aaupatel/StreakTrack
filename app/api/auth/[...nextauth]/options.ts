@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
+import Organization from "@/models/Organization";
 
 export const options: NextAuthOptions = {
   providers: [
@@ -34,6 +35,12 @@ export const options: NextAuthOptions = {
             throw new Error("Invalid password");
           }
 
+          // Fetch organization details if user is linked to an organization
+          let organization = null;
+          if (user.organizationId) {
+            organization = await Organization.findById(user.organizationId).lean();
+          }
+
           return {
             id: user._id.toString(),
             email: user.email,
@@ -41,6 +48,7 @@ export const options: NextAuthOptions = {
             organizationId: user.organizationId?.toString(),
             role: user.role,
             organizationName: user.organizationName,
+            organization: organization || null,
           };
         } catch (error) {
           console.error("Auth error:", error);
@@ -60,6 +68,7 @@ export const options: NextAuthOptions = {
         token.organizationId = user.organizationId;
         token.role = user.role;
         token.organizationName = user.organizationName;
+        token.organization = user.organization; 
       }
       return token;
     },
@@ -69,6 +78,7 @@ export const options: NextAuthOptions = {
         session.user.organizationId = token.organizationId;
         session.user.role = token.role;
         session.user.organizationName = token.organizationName;
+        session.organization = token.organization;
       }
       return session;
     },

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import connectDB from "@/lib/mongodb";
 import Student from "@/models/Student";
 import { authOptions } from "@/lib/auth";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 export async function POST(request: Request) {
   try {
@@ -15,11 +16,21 @@ export async function POST(request: Request) {
     const data = await request.json();
     const { images, ...studentData } = data;
 
+    if (!images || images.length !== 3) {
+      return NextResponse.json(
+        { error: "Exactly 3 images are required for student registration." },
+        { status: 400 }
+      );
+    }
+
     await connectDB();
+
+    // Upload images to Cloudinary
+    const imageUrls: string[] = await uploadToCloudinary(images);
 
     const student = await Student.create({
       ...studentData,
-      images,
+      images: imageUrls,
       organizationId: session.user.organizationId,
     });
 

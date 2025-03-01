@@ -40,9 +40,13 @@ export async function GET(request: Request) {
           console.log(`Device ${deviceId} status updated to online.`);
 
           // Fetch and send student data
-          const students = await Student.find({ organizationId: organizationId });
-          // console.log(JSON.stringify({ students: students }));
-          // ws.send(JSON.stringify({ students: students })); // Send data as JSON
+          const students = await Student.find(
+            { organizationId: organizationId },
+            "_id name enrollmentNo images" // Select only the desired fields
+          );
+          
+          console.log(JSON.stringify({ students: students }));
+          ws.send(JSON.stringify({ students: students })); // Send data as JSON
         } catch (error) {
           console.error(`Error updating device ${deviceId} status or fetching students:`, error);
           ws.send(JSON.stringify({ error: "Error fetching data" }));

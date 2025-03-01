@@ -30,22 +30,24 @@ export function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex">
             <Link href="/" className="flex items-center">
-              <Logo className="mr-2" />
-              <span className="font-semibold text-xl sm:block hidden">StreakTrack</span>
+              <Logo className="mr-2" size={50} />
+              <span className="font-semibold text-xl sm:block hidden">
+                StreakTrack
+              </span>
             </Link>
           </div>
 
           <div className="flex items-center sm:gap-4 gap-1 sm:text-base text-xs">
-            <Link href="/" className="flex items-center">
-              <span className="text-gray-600 hover:text-gray-900">Home</span>
+            <Link href="/dashboard" className="flex items-center">
+              <span className="px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-200 hover:text-gray-900">Dashboard</span>
             </Link>
             <Link href="/about" className="flex items-center">
-              <span className="text-gray-600 hover:text-gray-900">
+              <span className="px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-200 hover:text-gray-900">
                 About Us
               </span>
             </Link>
             <Link href="/contact" className="flex items-center">
-              <span className="text-gray-600 hover:text-gray-900">
+              <span className="px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-200 hover:text-gray-900">
                 Contact Us
               </span>
             </Link>
@@ -57,7 +59,7 @@ export function Navbar() {
                     variant="ghost"
                     className="relative h-10 w-10 rounded-full"
                   >
-                    <Avatar className="h-10 w-10">
+                    <Avatar className="h-12 w-12">
                       <AvatarImage
                         src={session.user?.image || "/default-avatar.png"}
                         alt={session.user?.name}
@@ -105,11 +107,10 @@ export function Navbar() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link
-                href="/auth/login"
-                className="text-gray-600 hover:text-gray-900"
-              >
-                Sign in
+              <Link href="/auth/login">
+                <Button size="lg" className="mr-4">
+                  Login
+                </Button>
               </Link>
             )}
           </div>
