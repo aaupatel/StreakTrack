@@ -10,8 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Edit, Search } from "lucide-react";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 interface Student {
   _id: string;
@@ -20,6 +21,7 @@ interface Student {
   enrollmentNo: string;
   contactNo: string;
   fatherName: string;
+  fatherContactNo: string;
   images: string[];
 }
 
@@ -72,6 +74,8 @@ export default function StudentsPage() {
               <TableHead>Branch</TableHead>
               <TableHead>Father&apos;s Name</TableHead>
               <TableHead>Contact</TableHead>
+              <TableHead>Father&apos;s Contact</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -94,6 +98,17 @@ export default function StudentsPage() {
                 <TableCell>{student.branch}</TableCell>
                 <TableCell>{student.fatherName}</TableCell>
                 <TableCell>{student.contactNo}</TableCell>
+                <TableCell>{student.fatherContactNo}</TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-red-500 hover:text-red-600"
+                    onClick={() => console.log(student._id)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

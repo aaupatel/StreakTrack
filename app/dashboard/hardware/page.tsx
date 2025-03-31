@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,23 +22,15 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Camera, Wifi, Power, RefreshCw, Plus, Cctv } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Camera,
-  Wifi,
-  Power,
-  RefreshCw,
-  Plus,
-  Terminal
-} from "lucide-react";
 
 const deviceFormSchema = z.object({
   name: z.string().min(2, "Device name is required"),
@@ -51,12 +43,23 @@ interface Device {
   location: string;
   status: "online" | "offline";
   lastSeen?: string;
+  organizationId: {
+    _id: string;
+  };
 }
 
 export default function HardwarePage() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const [videoFeedSource, setVideoFeedSource] = useState<string | null>(null);
+  const videoFeedRef = useRef<HTMLDivElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const [selectedOnlineDeviceId, setSelectedOnlineDeviceId] = useState<
+    string | null
+  >(null);
+  const [isStreaming, setIsStreaming] = useState(false);
 
   const form = useForm<z.infer<typeof deviceFormSchema>>({
     resolver: zodResolver(deviceFormSchema),
@@ -68,20 +71,22 @@ export default function HardwarePage() {
 
   useEffect(() => {
     fetchDevices();
-    const interval = setInterval(fetchDevices, 30000);
+    const interval = setInterval(fetchDevices, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchDevices = async () => {
+  const fetchDevices = useCallback(async () => {
     try {
       const response = await fetch("/api/hardware/devices");
       if (!response.ok) throw new Error("Failed to fetch devices");
-      const data = await response.json();
-      setDevices(data);
+      const newData = await response.json();
+      if (JSON.stringify(newData) !== JSON.stringify(devices)) {
+        setDevices(newData);
+      }
     } catch (error) {
       toast.error("Failed to fetch devices");
     }
-  };
+  });
 
   const onSubmit = async (values: z.infer<typeof deviceFormSchema>) => {
     setLoading(true);
@@ -102,6 +107,129 @@ export default function HardwarePage() {
       toast.error("Failed to add device");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const disconnectWebSocket = useCallback(() => {
+    // Move disconnectWebSocket before connectWebSocket
+    if (wsRef.current) {
+      console.log("Disconnecting WebSocket...");
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setVideoFeedSource(null);
+  }, [wsRef, setVideoFeedSource]);
+
+  const connectWebSocket = useCallback(
+    (deviceId: string, organizationId: string) => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        console.log("WebSocket is already open.");
+        return;
+      }
+
+      if (wsRef.current) {
+        console.log("Websocket is already connected.");
+        wsRef.current.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "live_stream" && data.frame) {
+              const base64Data = data.frame;
+              setVideoFeedSource(`data:image/jpeg;base64,${base64Data}`);
+              if (videoFeedRef.current && base64Data) {
+                videoFeedRef.current.innerHTML = `<img src="${videoFeedSource}" alt="Camera Feed" style="width: 100%; height: auto;" />`;
+              }
+            }
+          } catch (error) {
+            console.error("Error parsing WebSocket message:", error);
+          }
+        };
+        return;
+      }
+
+      console.log("Connecting WebSocket...");
+      disconnectWebSocket();
+      try {
+        wsRef.current = new WebSocket(
+          `ws://localhost:3001?deviceId=${deviceId}&organizationId=${organizationId}&isHardware=false`
+        );
+
+        wsRef.current.onopen = () => {
+          console.log("WebSocket connected.");
+        };
+
+        wsRef.current.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            // console.log("Received WebSocket data:", data); 
+            if (data.type === "live_stream" && data.frame) {
+              const base64Data = data.frame;
+              setVideoFeedSource(`data:image/jpeg;base64,${base64Data}`);
+              // console.log("Video feed source updated:", videoFeedSource);
+              if (videoFeedRef.current && base64Data) {
+                videoFeedRef.current.innerHTML = `<img src="${videoFeedSource}" alt="Camera Feed" style="width: 100%; height: auto;" />`;
+              }
+            }
+          } catch (error) {
+            console.error("Error parsing WebSocket message:", error);
+          }
+        };
+
+        wsRef.current.onclose = () => {
+          // console.log("WebSocket connection closed.");
+          setVideoFeedSource(null);
+        };
+
+        wsRef.current.onerror = (error) => {
+          console.error("WebSocket error:", error);
+          toast.error("Failed to connect to device.");
+          setVideoFeedSource(null);
+        };
+      } catch (error) {
+        console.error("WebSocket connection error:", error);
+        toast.error("Failed to connect to device.");
+        setVideoFeedSource(null);
+      }
+    },
+    [disconnectWebSocket, setVideoFeedSource, videoFeedRef, wsRef, toast]
+  );
+
+  useEffect(() => {
+    // console.log("Selected device id changed", selectedDeviceId);
+    if (selectedDeviceId) {
+      const device = devices.find((d) => d._id === selectedDeviceId);
+      connectWebSocket(selectedDeviceId, device?.organizationId?._id || "");
+    } else {
+      disconnectWebSocket();
+    }
+  }, [
+    selectedDeviceId,
+    connectWebSocket,
+    fetchDevices,
+    devices,
+    disconnectWebSocket,
+  ]);
+
+  const startStream = () => {
+    if (!selectedOnlineDeviceId) {
+      toast.error("Please select a device to start the stream.");
+      return;
+    }
+
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "start_stream" }));
+      setIsStreaming(true);
+    } else {
+      toast.error("Websocket is not connected");
+    }
+  };
+
+  const stopStream = () => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "stop_stream" }));
+      setIsStreaming(false);
+      setVideoFeedSource(null);
+    } else {
+      toast.error("Websocket is not connected");
     }
   };
 
@@ -126,7 +254,10 @@ export default function HardwarePage() {
                 <DialogTitle>Add New Device</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-6"
+                >
                   <FormField
                     control={form.control}
                     name="name"
@@ -147,7 +278,10 @@ export default function HardwarePage() {
                       <FormItem>
                         <FormLabel>Device Location</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter device location" {...field} />
+                          <Input
+                            placeholder="Enter device location"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -177,17 +311,27 @@ export default function HardwarePage() {
                   <div>
                     <p className="font-medium">{device.name}</p>
                     <p className="text-sm text-gray-500">ID: {device._id}</p>
-                    <p className="text-sm text-gray-500">Location: {device.location}</p>
+                    <p className="text-sm text-gray-500">
+                      Location: {device.location}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <Wifi className={`h-5 w-5 ${
-                      device.status === "online" ? "text-green-500" : "text-gray-400"
-                    }`} />
-                    <span className={`text-sm ${
-                      device.status === "online" ? "text-green-500" : "text-gray-500"
-                    }`}>
+                    <Wifi
+                      className={`h-5 w-5 ${
+                        device.status === "online"
+                          ? "text-green-500"
+                          : "text-gray-400"
+                      }`}
+                    />
+                    <span
+                      className={`text-sm ${
+                        device.status === "online"
+                          ? "text-green-500"
+                          : "text-gray-500"
+                      }`}
+                    >
                       {device.status}
                     </span>
                   </div>
@@ -204,94 +348,94 @@ export default function HardwarePage() {
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Setup Instructions</h2>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <h3 className="font-medium">1. Hardware Requirements</h3>
-              <ul className="list-disc list-inside text-sm text-gray-600">
-                <li>Raspberry Pi (3 or newer)</li>
-                <li>Pi Camera Module</li>
-                <li>Internet Connection</li>
-              </ul>
-            </div>
-            <div className="space-y-2">
-              <h3 className="font-medium">2. Installation Steps</h3>
-              <ul className="list-disc list-inside text-sm text-gray-600">
-                <li>Connect the camera module</li>
-                <li>Configure network settings</li>
-                <li>Install required software</li>
-                <li>Set up the connection</li>
-              </ul>
+          <div className="flex items-center justify-between">
+            <h2 className="flex text-lg font-semibold mb-4">
+              Realtime Camera
+              <Cctv className="ml-2 h-5 w-5" />
+            </h2>
+            {devices.filter((device) => device.status === "online").length >
+            0 ? (
+              <div className="flex gap-2">
+                <Select
+                  onValueChange={(value) => {
+                    setSelectedOnlineDeviceId(value);
+                    setSelectedDeviceId(value);
+                    connectWebSocket(
+                      value,
+                      devices.find((d) => d._id === value)?.organizationId
+                        ?._id || ""
+                    );
+                  }}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select Online Device" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {devices
+                      .filter((device) => device.status === "online")
+                      .map((device) => (
+                        <SelectItem key={device._id} value={device._id}>
+                          {device.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  disabled={!selectedOnlineDeviceId}
+                  onClick={isStreaming ? stopStream : startStream}
+                >
+                  {isStreaming ? "Stop Stream" : "Start Stream"}
+                </Button>
+              </div>
+            ) : (
+              <p>No online devices</p>
+            )}
+          </div>
+          <div className="flex flex-col gap-4">
+            <div
+              id="video-feed"
+              className="bg-red-400 space-y-4"
+              // ref={videoFeedRef}
+            >
+              {/* <img
+                src="https://bs.uenicdn.com/blog/wp-content/uploads/2018/04/giphy.gif"
+                alt="Camera Feed"
+                style={{ width: "100%", height: "auto" }}
+              /> */}
+              {videoFeedSource && (
+                <img
+                  src={videoFeedSource}
+                  alt="Camera Feed"
+                  style={{ width: "100%", height: "auto" }}
+                />
+              )}
             </div>
           </div>
         </Card>
       </div>
 
-      {/* <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Raspberry Pi Code</h2>
-          <Button variant="outline" size="sm">
-            <Terminal className="h-4 w-4 mr-2" />
-            Copy Code
-          </Button>
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">Setup Instructions</h2>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h3 className="font-medium">1. Hardware Requirements</h3>
+            <ul className="list-disc list-inside text-sm text-gray-600">
+              <li>Raspberry Pi (3 or newer)</li>
+              <li>Pi Camera Module</li>
+              <li>Internet Connection</li>
+            </ul>
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-medium">2. Installation Steps</h3>
+            <ul className="list-disc list-inside text-sm text-gray-600">
+              <li>Connect the camera module</li>
+              <li>Configure network settings</li>
+              <li>Install required software</li>
+              <li>Set up the connection</li>
+            </ul>
+          </div>
         </div>
-        <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <pre className="text-sm">
-            <code>{`# Python code for Raspberry Pi
-import RPi.GPIO as GPIO
-import cv2
-import requests
-import time
-import websockets
-import asyncio
-import json
-
-# Configuration
-API_URL = "${process.env.NEXT_PUBLIC_APP_URL}/api"
-DEVICE_ID = "your_device_id"
-API_KEY = "your_api_key"
-
-async def connect_websocket():
-    uri = f"ws://{API_URL}/ws?token={API_KEY}&deviceId={DEVICE_ID}"
-    async with websockets.connect(uri) as websocket:
-        while True:
-            try:
-                # Send heartbeat
-                await websocket.send(json.dumps({
-                    "type": "heartbeat",
-                    "deviceId": DEVICE_ID
-                }))
-                
-                # Process face detection
-                if detect_face():
-                    await websocket.send(json.dumps({
-                        "type": "detection",
-                        "deviceId": DEVICE_ID,
-                        "timestamp": time.time()
-                    }))
-                
-                await asyncio.sleep(5)
-            except Exception as e:
-                print(f"Error: {e}")
-                break
-
-def detect_face():
-    # Implement face detection logic
-    return True
-
-async def main():
-    while True:
-        try:
-            await connect_websocket()
-        except Exception as e:
-            print(f"Connection error: {e}")
-            await asyncio.sleep(5)
-
-if __name__ == "__main__":
-    asyncio.run(main())`}</code>
-          </pre>
-        </div>
-      </Card> */}
+      </Card>
     </div>
   );
 }
