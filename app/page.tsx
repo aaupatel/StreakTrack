@@ -6,7 +6,7 @@ import { Logo } from '@/components/ui/logo';
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-yellow-50 to-yellow-100 ">
-      <div className="container mx-auto px-4 py-16">
+      <div className="container mx-auto px-4 pt-16">
         <div className="text-center mb-16">
           <div className="inline-flex flex-col items-center gap-4">
             <Logo className="h-72 w-72 text-primary" />
@@ -68,6 +68,44 @@ export default function Home() {
             description="Generate tailored attendance reports to meet specific needs"
           />
         </div>
+
+        <div className="bg-white p-8 rounded-lg shadow-md mb-16">
+          <h2 className="text-3xl font-semibold mb-6">Common Questions</h2>
+          <div className="space-y-4">
+            <div className="border-b pb-4">
+              <h3 className="font-semibold">
+                How accurate is the face detection?
+              </h3>
+              <p className="text-gray-700">
+                StreakTrack uses advanced algorithms to ensure high accuracy in
+                face detection.
+              </p>
+            </div>
+            <div className="border-b pb-4">
+              <h3 className="font-semibold">Is the system secure?</h3>
+              <p className="text-gray-700">
+                Yes, we prioritize data security and employ robust privacy
+                measures.
+              </p>
+            </div>
+            {/* Add more questions and answers */}
+          </div>
+        </div>
+
+        <footer className="flex flex-col md:flex-row justify-between items-center mt-8 p-2 border-t">
+          <div className="text-gray-600">
+            <p>Contact: info@streaktrack.com</p>
+            <p>Address: 123 Main Street, City, Country</p>
+          </div>
+          <Logo className="h-20 w-20 text-primary" />
+          <div className=" md:mt-0 text-gray-500">
+            <p>
+              &copy; {new Date().getFullYear()} StreakTrack. All rights
+              reserved.
+            </p>
+            <p>Developed by Ayush Patidar&apos;s Dev Team</p>
+          </div>
+        </footer>
 
         {/* <div className="text-center">
           <Link href="/auth/login">

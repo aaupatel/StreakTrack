@@ -10,7 +10,6 @@ import {
   UserPlus,
   LogOut,
   Menu,
-  Camera,
   Cctv,
   PackagePlusIcon,
 } from "lucide-react";

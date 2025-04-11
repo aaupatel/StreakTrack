@@ -7,7 +7,7 @@ import { ObjectId } from "mongodb";
 
 let wss: WebSocketServer | null = null;
 const hardwareClients = new Map<string, WebSocket>(); // Hardware connections
-const frontendClients = new Map<string, WebSocket>(); // Frontend connections
+const frontendClients = new Map<WebSocket, string>(); // Frontend connections
 
 export async function GET(request: Request) {
   console.log("WebSocket server running on port 3001");
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
         });
       } else {
         // Frontend Page Connection
-        frontendClients.set(deviceId, ws);
+        frontendClients.set(ws, deviceId);
         console.log(`Frontend Page connected to device ${deviceId}`);
       }
 
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
             }
           });
         } else {
-          frontendClients.delete(deviceId);
+          frontendClients.delete(ws);
           console.log(`Frontend Page for device ${deviceId} disconnected`);
         }
       });
@@ -90,20 +90,42 @@ export async function GET(request: Request) {
       ws.on("message", (message) => {
         try {
           const data = JSON.parse(message.toString());
-          const hardwareSocket = hardwareClients.get(deviceId);
-          const frontendSocket = frontendClients.get(deviceId);
+          const senderDeviceId = deviceId; // The deviceId of the sender
 
-          if (hardwareSocket && data.type === "start_stream" || data.type === "stop_stream") {
-            hardwareSocket.send(message.toString());
-          } else if (hardwareSocket && frontendSocket && data.type === "live_stream") {
-            // Forward live stream data from hardware to frontend
-            frontendSocket.send(message.toString());
+          if (data.type === "start_stream" || data.type === "stop_stream") {
+            const targetDeviceId = data.targetDeviceId;
+            const hardwareSocket = hardwareClients.get(targetDeviceId);
+            if (hardwareSocket && hardwareSocket.readyState === WebSocket.OPEN) {
+              hardwareSocket.send(JSON.stringify(data));
+              console.log(`Backend: Forwarded '${data.type}' command to hardware ${targetDeviceId}`);
+            } else {
+              console.log(`Backend: Hardware device ${targetDeviceId} not connected or not open.`);
+              // No need to send error to frontend here, the UI handles it
+            }
+          } else if (data.type === "attendance") {
+            const hardwareSocket = hardwareClients.get(senderDeviceId); // Attendance from hardware
+            // Forward attendance to all connected frontends for this device
+            frontendClients.forEach((clientDeviceId, clientWs) => {
+              if (clientDeviceId === senderDeviceId && clientWs.readyState === WebSocket.OPEN) {
+                clientWs.send(JSON.stringify(data));
+              }
+            });
+          } else if (hardwareClients.has(senderDeviceId)) { // Message from hardware (live_stream)
+            if (data.type === "live_stream" && data.frame) {
+              // Forward live stream data to all frontends connected to this hardware
+              frontendClients.forEach((clientDeviceId, clientWs) => {
+                if (clientDeviceId === senderDeviceId && clientWs.readyState === WebSocket.OPEN) {
+                  clientWs.send(JSON.stringify(data));
+                }
+              });
+            } else {
+              console.log(`Backend: Received JSON from hardware ${senderDeviceId}:`, data);
+            }
           } else {
-            console.log(`Received message from ${deviceId}: ${message}`);
+            console.log(`Backend: Received message from frontend ${senderDeviceId}:`, data);
           }
-
         } catch (error) {
-          console.error(`Error parsing message from ${deviceId}:`, error);
+          console.error(`Backend: Error parsing message:`, error);
         }
       });
 

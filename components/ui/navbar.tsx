@@ -13,14 +13,40 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from "./logo";
 import { Button } from "./button";
-import { HelpCircle, LogOut, Settings, User } from "lucide-react";
+import {
+  BadgeHelp,
+  BadgeInfo,
+  BarChart2,
+  LogOut,
+  Settings,
+  User,
+} from "lucide-react";
 
 export function Navbar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session} = useSession();
 
   // Don't show navbar on auth pages
   if (pathname.startsWith("/auth/")) {
+    return null;
+  }
+
+  // Array of paths where the navbar should be visible
+  const showNavbarOn = [
+    "/", // Homepage
+    "/dashboard",
+    "/profile",
+    "/about",
+    "/help",
+    "/contact",
+    "/settings",
+  ];
+
+  // Check if the current pathname matches any of the paths or starts with /dashboard/
+  const shouldShowNavbar =
+    showNavbarOn.includes(pathname) || pathname.startsWith("/dashboard/");
+
+  if (!shouldShowNavbar) {
     return null;
   }
 
@@ -38,17 +64,19 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center sm:gap-4 gap-1 sm:text-base text-xs">
-            <Link href="/dashboard" className="flex items-center">
-              <span className="px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-200 hover:text-gray-900">Dashboard</span>
+            <Link href="/dashboard" className="hidden sm:flex items-center">
+              <span className="px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-200 hover:text-gray-900">
+                Dashboard
+              </span>
             </Link>
-            <Link href="/about" className="flex items-center">
+            <Link href="/about" className="hidden sm:flex items-center">
               <span className="px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-200 hover:text-gray-900">
                 About Us
               </span>
             </Link>
-            <Link href="/contact" className="flex items-center">
+            <Link href="/help" className="hidden sm:flex items-center">
               <span className="px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-200 hover:text-gray-900">
-                Contact Us
+                Help Center
               </span>
             </Link>
 
@@ -71,7 +99,10 @@ export function Navbar() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end">
-                  <div className="flex items-center gap-2 p-2">
+                  <Link
+                    href="/profile"
+                    className="flex items-center gap-2 p-2 cursor-pointer"
+                  >
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium">
                         {session.user?.name}
@@ -80,8 +111,13 @@ export function Navbar() {
                         {session.user?.email}
                       </p>
                     </div>
-                  </div>
+                  </Link>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="sm:hidden flex">
+                    <Link href="/dashboard" className="cursor-pointer">
+                      <BarChart2 className="mr-2 h-4 w-4" /> Dashboard
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/profile" className="cursor-pointer">
                       <User className="mr-2 h-4 w-4" /> Profile
@@ -93,8 +129,13 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
+                    <Link href="/about" className="cursor-pointer">
+                      <BadgeInfo className="mr-2 h-4 w-4" /> About Us
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link href="/help" className="cursor-pointer">
-                      <HelpCircle className="mr-2 h-4 w-4" /> Help
+                      <BadgeHelp className="mr-2 h-4 w-4" /> Help Center
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

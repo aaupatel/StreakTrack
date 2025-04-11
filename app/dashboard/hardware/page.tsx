@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Camera, Wifi, Power, RefreshCw, Plus, Cctv } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import Image from "next/image";
 
 const deviceFormSchema = z.object({
   name: z.string().min(2, "Device name is required"),
@@ -69,12 +70,6 @@ export default function HardwarePage() {
     },
   });
 
-  useEffect(() => {
-    fetchDevices();
-    const interval = setInterval(fetchDevices, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
   const fetchDevices = useCallback(async () => {
     try {
       const response = await fetch("/api/hardware/devices");
@@ -86,7 +81,13 @@ export default function HardwarePage() {
     } catch (error) {
       toast.error("Failed to fetch devices");
     }
-  });
+  }, [devices, setDevices]);
+
+  useEffect(() => {
+    fetchDevices();
+    const interval = setInterval(fetchDevices, 10000);
+    return () => clearInterval(interval);
+  }, [fetchDevices]);
 
   const onSubmit = async (values: z.infer<typeof deviceFormSchema>) => {
     setLoading(true);
@@ -130,17 +131,32 @@ export default function HardwarePage() {
       if (wsRef.current) {
         console.log("Websocket is already connected.");
         wsRef.current.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === "live_stream" && data.frame) {
-              const base64Data = data.frame;
-              setVideoFeedSource(`data:image/jpeg;base64,${base64Data}`);
-              if (videoFeedRef.current && base64Data) {
-                videoFeedRef.current.innerHTML = `<img src="${videoFeedSource}" alt="Camera Feed" style="width: 100%; height: auto;" />`;
+          if (typeof event.data === "string") {
+            // Handle JSON messages
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === "live_stream" && data.frame) {
+                const base64Data = data.frame;
+                setVideoFeedSource(`data:image/jpeg;base64,${base64Data}`);
               }
+              // Handle other JSON message types if needed
+            } catch (error) {
+              console.error("Error parsing JSON WebSocket message:", error);
             }
-          } catch (error) {
-            console.error("Error parsing WebSocket message:", error);
+          } else if (event.data instanceof Blob) {
+            // Handle binary (Blob) data - this might still be relevant
+            const reader = new FileReader();
+            reader.onload = () => {
+              if (
+                typeof reader.result === "string" &&
+                reader.result.startsWith("data:image/jpeg;base64,")
+              ) {
+                setVideoFeedSource(reader.result);
+              } else {
+                console.warn("Received non-image Blob data.");
+              }
+            };
+            reader.readAsDataURL(event.data);
           }
         };
         return;
@@ -158,19 +174,32 @@ export default function HardwarePage() {
         };
 
         wsRef.current.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            // console.log("Received WebSocket data:", data); 
-            if (data.type === "live_stream" && data.frame) {
-              const base64Data = data.frame;
-              setVideoFeedSource(`data:image/jpeg;base64,${base64Data}`);
-              // console.log("Video feed source updated:", videoFeedSource);
-              if (videoFeedRef.current && base64Data) {
-                videoFeedRef.current.innerHTML = `<img src="${videoFeedSource}" alt="Camera Feed" style="width: 100%; height: auto;" />`;
+          if (typeof event.data === "string") {
+            // Handle JSON messages
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === "live_stream" && data.frame) {
+                const base64Data = data.frame;
+                setVideoFeedSource(`data:image/jpeg;base64,${base64Data}`);
               }
+              // Handle other JSON message types if needed
+            } catch (error) {
+              console.error("Error parsing JSON WebSocket message:", error);
             }
-          } catch (error) {
-            console.error("Error parsing WebSocket message:", error);
+          } else if (event.data instanceof Blob) {
+            // Handle binary (Blob) data
+            const reader = new FileReader();
+            reader.onload = () => {
+              if (
+                typeof reader.result === "string" &&
+                reader.result.startsWith("data:image/jpeg;base64,")
+              ) {
+                setVideoFeedSource(reader.result);
+              } else {
+                console.warn("Received non-image Blob data.");
+              }
+            };
+            reader.readAsDataURL(event.data);
           }
         };
 
@@ -190,7 +219,7 @@ export default function HardwarePage() {
         setVideoFeedSource(null);
       }
     },
-    [disconnectWebSocket, setVideoFeedSource, videoFeedRef, wsRef, toast]
+    [disconnectWebSocket, wsRef, setVideoFeedSource]
   );
 
   useEffect(() => {
@@ -216,7 +245,12 @@ export default function HardwarePage() {
     }
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "start_stream" }));
+      wsRef.current.send(
+        JSON.stringify({
+          type: "start_stream",
+          targetDeviceId: selectedOnlineDeviceId,
+        })
+      );
       setIsStreaming(true);
     } else {
       toast.error("Websocket is not connected");
@@ -225,7 +259,12 @@ export default function HardwarePage() {
 
   const stopStream = () => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "stop_stream" }));
+      wsRef.current.send(
+        JSON.stringify({
+          type: "stop_stream",
+          targetDeviceId: selectedOnlineDeviceId,
+        })
+      );
       setIsStreaming(false);
       setVideoFeedSource(null);
     } else {
@@ -403,9 +442,11 @@ export default function HardwarePage() {
                 style={{ width: "100%", height: "auto" }}
               /> */}
               {videoFeedSource && (
-                <img
+                <Image
                   src={videoFeedSource}
                   alt="Camera Feed"
+                  width={1280}
+                  height={720}
                   style={{ width: "100%", height: "auto" }}
                 />
               )}
