@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Camera, Wifi, Power, RefreshCw, Plus, Cctv } from "lucide-react";
+import { Camera, Wifi, Power, RefreshCw, Plus, Cctv, UserCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
 
@@ -61,6 +61,7 @@ export default function HardwarePage() {
     string | null
   >(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [lastDetection, setLastDetection] = useState<any>(null);
 
   const form = useForm<z.infer<typeof deviceFormSchema>>({
     resolver: zodResolver(deviceFormSchema),
@@ -111,8 +112,39 @@ export default function HardwarePage() {
     }
   };
 
+  const handleWebSocketMessage = useCallback(
+    (event: MessageEvent) => {
+      if (typeof event.data === "string") {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "live_stream" && data.frame) {
+            const base64Data = data.frame;
+            setVideoFeedSource(`data:image/jpeg;base64,${base64Data}`);
+          } else if (data.type === "attendance" && data.student) {
+            setLastDetection(data.student);
+          }
+        } catch (error) {
+          console.error("Error parsing JSON WebSocket message:", error);
+        }
+      } else if (event.data instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (
+            typeof reader.result === "string" &&
+            reader.result.startsWith("data:image/jpeg;base64,")
+          ) {
+            setVideoFeedSource(reader.result);
+          } else {
+            console.warn("Received non-image Blob data.");
+          }
+        };
+        reader.readAsDataURL(event.data);
+      }
+    },
+    [setVideoFeedSource]
+  );
+
   const disconnectWebSocket = useCallback(() => {
-    // Move disconnectWebSocket before connectWebSocket
     if (wsRef.current) {
       console.log("Disconnecting WebSocket...");
       wsRef.current.close();
@@ -131,33 +163,7 @@ export default function HardwarePage() {
       if (wsRef.current) {
         console.log("Websocket is already connected.");
         wsRef.current.onmessage = (event) => {
-          if (typeof event.data === "string") {
-            // Handle JSON messages
-            try {
-              const data = JSON.parse(event.data);
-              if (data.type === "live_stream" && data.frame) {
-                const base64Data = data.frame;
-                setVideoFeedSource(`data:image/jpeg;base64,${base64Data}`);
-              }
-              // Handle other JSON message types if needed
-            } catch (error) {
-              console.error("Error parsing JSON WebSocket message:", error);
-            }
-          } else if (event.data instanceof Blob) {
-            // Handle binary (Blob) data - this might still be relevant
-            const reader = new FileReader();
-            reader.onload = () => {
-              if (
-                typeof reader.result === "string" &&
-                reader.result.startsWith("data:image/jpeg;base64,")
-              ) {
-                setVideoFeedSource(reader.result);
-              } else {
-                console.warn("Received non-image Blob data.");
-              }
-            };
-            reader.readAsDataURL(event.data);
-          }
+          handleWebSocketMessage(event);
         };
         return;
       }
@@ -174,33 +180,7 @@ export default function HardwarePage() {
         };
 
         wsRef.current.onmessage = (event) => {
-          if (typeof event.data === "string") {
-            // Handle JSON messages
-            try {
-              const data = JSON.parse(event.data);
-              if (data.type === "live_stream" && data.frame) {
-                const base64Data = data.frame;
-                setVideoFeedSource(`data:image/jpeg;base64,${base64Data}`);
-              }
-              // Handle other JSON message types if needed
-            } catch (error) {
-              console.error("Error parsing JSON WebSocket message:", error);
-            }
-          } else if (event.data instanceof Blob) {
-            // Handle binary (Blob) data
-            const reader = new FileReader();
-            reader.onload = () => {
-              if (
-                typeof reader.result === "string" &&
-                reader.result.startsWith("data:image/jpeg;base64,")
-              ) {
-                setVideoFeedSource(reader.result);
-              } else {
-                console.warn("Received non-image Blob data.");
-              }
-            };
-            reader.readAsDataURL(event.data);
-          }
+          handleWebSocketMessage(event);
         };
 
         wsRef.current.onclose = () => {
@@ -219,7 +199,7 @@ export default function HardwarePage() {
         setVideoFeedSource(null);
       }
     },
-    [disconnectWebSocket, wsRef, setVideoFeedSource]
+    [disconnectWebSocket, wsRef, setVideoFeedSource, handleWebSocketMessage]
   );
 
   useEffect(() => {
@@ -229,6 +209,9 @@ export default function HardwarePage() {
       connectWebSocket(selectedDeviceId, device?.organizationId?._id || "");
     } else {
       disconnectWebSocket();
+      setIsStreaming(false);
+      setVideoFeedSource(null);
+      setLastDetection(null);
     }
   }, [
     selectedDeviceId,
@@ -267,6 +250,7 @@ export default function HardwarePage() {
       );
       setIsStreaming(false);
       setVideoFeedSource(null);
+      setLastDetection(null);
     } else {
       toast.error("Websocket is not connected");
     }
@@ -422,7 +406,9 @@ export default function HardwarePage() {
                 <Button
                   disabled={!selectedOnlineDeviceId}
                   onClick={isStreaming ? stopStream : startStream}
+                  variant={isStreaming ? "destructive" : "default"}
                 >
+                  <Camera className="mr-2 h-4 w-4" />
                   {isStreaming ? "Stop Stream" : "Start Stream"}
                 </Button>
               </div>
@@ -433,22 +419,19 @@ export default function HardwarePage() {
           <div className="flex flex-col gap-4">
             <div
               id="video-feed"
-              className="bg-red-400 space-y-4"
-              // ref={videoFeedRef}
+              className="bg-gray-100 w-full rounded-md space-y-4 overflow-hidden"
+              ref={videoFeedRef}
             >
-              {/* <img
-                src="https://bs.uenicdn.com/blog/wp-content/uploads/2018/04/giphy.gif"
-                alt="Camera Feed"
-                style={{ width: "100%", height: "auto" }}
-              /> */}
               {videoFeedSource && (
-                <Image
-                  src={videoFeedSource}
-                  alt="Camera Feed"
-                  width={1280}
-                  height={720}
-                  style={{ width: "100%", height: "auto" }}
-                />
+                <div className="relative w-full h-full">
+                  <Image
+                    src={videoFeedSource}
+                    alt="Camera Feed"
+                    width={100}
+                    height={100}
+                    style={{ width: "100%", height: "auto" }}
+                  />
+                </div>
               )}
             </div>
           </div>
@@ -456,6 +439,42 @@ export default function HardwarePage() {
       </div>
 
       <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">Last Detection</h2>
+        {lastDetection ? (
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2 text-green-600">
+              <UserCheck className="h-5 w-5" />
+              <span>Student Detected</span>
+            </div>
+            <div className="space-y-2">
+              <p>
+                <strong>Name:</strong> {lastDetection.name}
+              </p>
+              <p>
+                <strong>Enrollment No:</strong> {lastDetection.enrollmentNo}
+              </p>
+              <p>
+                <strong>Confidence:</strong>{" "}
+                {/* {(lastDetection.confidence * 100).toFixed(2)}% */}
+              </p>
+              {lastDetection.timestamp && (
+                <p>
+                  <strong>Timestamp:</strong>{" "}
+                  {new Date(lastDetection.timestamp).toLocaleString()}
+                </p>
+              )}
+              {lastDetection.deviceId && (
+                <p>
+                  <strong>Device ID:</strong> {lastDetection.deviceId}
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="text-gray-500">No recent detections</p>
+        )}
+      </Card>
+      {/* <Card className="p-6">
         <h2 className="text-lg font-semibold mb-4">Setup Instructions</h2>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -476,7 +495,7 @@ export default function HardwarePage() {
             </ul>
           </div>
         </div>
-      </Card>
+      </Card> */}
     </div>
   );
 }
