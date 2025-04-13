@@ -13,6 +13,15 @@ import {
 } from "@/components/ui/table";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
+import { getDaysInMonth } from "date-fns";
+import { cn } from "@/lib/utils";
+
+interface MonthlyAttendanceRecord {
+  Name: string;
+  Branch: string;
+  [day: number]: "P" | "A"; 
+  EnrollmentNo: string;
+}
 
 interface AttendanceRecord {
   _id: string;
@@ -30,23 +39,62 @@ interface AttendanceRecord {
 export default function AttendancePage() {
   const [date, setDate] = useState<Date>(new Date());
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [monthlyAttendance, setMonthlyAttendance] = useState<
+    MonthlyAttendanceRecord[]
+  >([]);
 
   useEffect(() => {
-    fetchAttendance(date);
+    fetchDailyAttendance(date)
+    fetchMonthlyAttendance(date.getFullYear(), date.getMonth() + 1);
   }, [date]);
 
-  const fetchAttendance = async (selectedDate: Date) => {
+  const fetchDailyAttendance = async (selectedDate: Date) => {
     try {
       const response = await fetch(
         `/api/attendance?date=${selectedDate.toISOString().split("T")[0]}`
       );
-      if (!response.ok) throw new Error("Failed to fetch attendance");
+      if (!response.ok) throw new Error("Failed to fetch daily attendance");
       const data = await response.json();
       setAttendance(data);
     } catch (error) {
-      toast.error("Failed to fetch attendance records");
+      toast.error("Failed to fetch daily attendance records");
     }
   };
+
+   const fetchMonthlyAttendance = async (year: number, month: number) => {
+     try {
+       const response = await fetch(
+         `/api/attendance?year=${year}&month=${month}`
+       );
+       if (!response.ok) throw new Error("Failed to fetch monthly attendance");
+       const data = await response.json();
+       setMonthlyAttendance(data);
+     } catch (error) {
+       toast.error("Failed to fetch monthly attendance records");
+     }
+   };
+
+   const handleDateChange = (newDate: Date | undefined) => {
+     if (newDate) {
+       setDate(newDate);
+       fetchDailyAttendance(newDate); // Fetch daily attendance when a new date is selected
+     }
+   };
+
+  const daysInCurrentMonth = getDaysInMonth(date);
+  const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+  const monthString = monthStart.toLocaleDateString("default", {
+    month: "long",
+    year: "numeric",
+  });
+
+  const formattedDate = date.toLocaleDateString("en-IN", {
+    // You can adjust the locale as needed
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   const exportAttendance = async () => {
     try {
@@ -91,11 +139,11 @@ export default function AttendancePage() {
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Attendance Register</h1>
-        <Button onClick={exportAttendance}>
+        <h1 className="text-2xl font-bold">Attendance</h1>
+        {/* <Button onClick={exportAttendance}>
           <Download className="mr-2 h-4 w-4" />
           Export Attendance
-        </Button>
+        </Button> */}
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -103,12 +151,26 @@ export default function AttendancePage() {
           <Calendar
             mode="single"
             selected={date}
-            onSelect={(date) => date && setDate(date)}
-            className="rounded-md border shadow-sm"
+            onSelect={handleDateChange}
+            classNames={{
+              selected: cn(
+                "bg-primary text-primary-foreground", // Default selected style
+                "ring-2 ring-primary ring-offset-1",
+                "font-bold"
+              ),
+              today: "font-semibold", // Style for today's date
+            }}
+            styles={{
+              selected: {
+                backgroundColor: "var(--accent)",
+                color: "var(--accent-foreground)",
+              },
+            }}
           />
         </div>
 
         <div className="border rounded-lg overflow-hidden shadow-sm">
+          <h2 className="px-4 py-2 font-semibold border-b">Daily Attendance {formattedDate}</h2>
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
@@ -165,31 +227,71 @@ export default function AttendancePage() {
           </Table>
         </div>
       </div>
+
+      <div className="space-y-8">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">
+            Monthly Attendance Register - {monthString}
+          </h1>
+          <Button onClick={exportAttendance}>
+            <Download className="mr-2 h-4 w-4" />
+            Export Attendance
+          </Button>
+        </div>
+
+        <div className="grid md:grid-cols-1 gap-8">
+          <div className="border rounded-lg overflow-hidden shadow-sm">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="font-semibold">Roll No.</TableHead>
+                  <TableHead className="font-semibold">Name</TableHead>
+                  <TableHead className="font-semibold">Branch</TableHead>
+                  {Array.from({ length: daysInCurrentMonth }, (_, i) => (
+                    <TableHead
+                      key={i + 1}
+                      className="font-semibold text-center"
+                    >
+                      {i + 1}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {monthlyAttendance.map((record) => (
+                  <TableRow
+                    key={record.EnrollmentNo}
+                    className="hover:bg-gray-50"
+                  >
+                    <TableCell className="font-medium">
+                      {record.EnrollmentNo}
+                    </TableCell>
+                    <TableCell>{record.Name}</TableCell>
+                    <TableCell>{record.Branch}</TableCell>
+                    {Array.from({ length: daysInCurrentMonth }, (_, i) => (
+                      <TableCell key={i + 1} className="text-center">
+                        {record[i + 1] || "A"}{" "}
+                        {/* Default to 'A' if no status */}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+                {monthlyAttendance.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={3 + daysInCurrentMonth}
+                      className="text-center py-8 text-gray-500"
+                    >
+                      No attendance records found for this month
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-// // Update the WebSocket setup in the attendance page
-// const setupWebSocket = () => {
-//   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-//   const ws = new WebSocket(
-//     `${protocol}//${window.location.host}/api/ws`
-//   );
-
-//   ws.onmessage = (event) => {
-//     try {
-//       const data = JSON.parse(event.data);
-//       if (data.type === 'attendance') {
-//         fetchAttendance(date);
-//       }
-//     } catch (error) {
-//       console.error('WebSocket message error:', error);
-//     }
-//   };
-
-//   ws.onerror = (error) => {
-//     console.error('WebSocket error:', error);
-//   };
-
-//   return () => ws.close();
-// };

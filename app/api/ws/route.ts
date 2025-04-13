@@ -4,6 +4,7 @@ import Device from "@/models/Device";
 import connectDB from "@/lib/mongodb";
 import Student from "@/models/Student";
 import { ObjectId } from "mongodb";
+import Attendance from "@/models/Attendance";
 
 let wss: WebSocketServer | null = null;
 const hardwareClients = new Map<string, WebSocket>(); // Hardware connections
@@ -107,7 +108,7 @@ export async function GET(request: Request) {
         }
       });
 
-      ws.on("message", (message) => {
+      ws.on("message", async (message) => {
         try {
           const data = JSON.parse(message.toString());
           const senderDeviceId = deviceId; // The deviceId of the sender
@@ -129,6 +130,31 @@ export async function GET(request: Request) {
             }
           } else if (data.type === "attendance") {
             const hardwareSocket = hardwareClients.get(senderDeviceId); // Attendance from hardware
+
+            // Save attendance data to the database
+            connectDB().then(async () => {
+              try {
+                const { studentId, timestamp } = data.student;
+                const attendanceDate = new Date(timestamp);
+                if (studentId && timestamp) {
+                  const newAttendance = new Attendance({
+                    deviceId: senderDeviceId,
+                    studentId: studentId,
+                    timestamp: new Date(timestamp),
+                    date: new Date(attendanceDate.getFullYear(), attendanceDate.getMonth(), attendanceDate.getDate()), // Set the 'date' field
+                    status: 'present', // Directly set status to 'present'
+                    method: 'automatic', // Directly set method to 'automatic'
+                    organizationId,
+                  });
+                  await newAttendance.save();
+                  console.log(`Backend: Attendance saved for student ${studentId} at ${timestamp}`);
+                } else {
+                  console.error(`Backend: Incomplete attendance data received from ${senderDeviceId}:`, data.student);
+                }
+              } catch (error) {
+                console.error(`Backend: Error saving attendance data:`, error);
+              }
+            })
             // Forward attendance to all connected frontends for this device
             frontendClients.forEach((clientDeviceId, clientWs) => {
               if (clientDeviceId === senderDeviceId && clientWs.readyState === WebSocket.OPEN) {
