@@ -5,6 +5,15 @@ import Student from "@/models/Student";
 import { authOptions } from "@/lib/auth";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 
+async function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
     try {
         const session = await getServerSession(authOptions);
@@ -13,7 +22,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
         await connectDB();
-        const studentId = params.id;
+        const studentId = (await Promise.resolve(params)).id; // Access id as a property of the resolved promise
         const formData = await request.formData();
         const name = formData.get("name") as string;
         const branch = formData.get("branch") as string;
@@ -21,17 +30,22 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         const contactNo = formData.get("contactNo") as string;
         const fatherName = formData.get("fatherName") as string;
         const fatherContactNo = formData.get("fatherContactNo") as string;
-        const images: File[] = formData.getAll("images") as File[];
+        const files: File[] = formData.getAll("images") as File[];
 
-        const existingStudent = await Student.findById(studentId);
-        if (!existingStudent) {
+        const student = await Student.findById(studentId);
+        if (!student) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 });
         }
 
-        let imageUrls: string[] = existingStudent.images;
+        let imageUrls: string[] = student.images;
 
-        if (images && images.length > 0) {
-            imageUrls = await uploadToCloudinary(images);
+        if (files && files.length > 0) {
+            const base64Files: string[] = [];
+            for (const file of files) {
+                const base64 = await fileToBase64(file);
+                base64Files.push(base64);
+            }
+            imageUrls = await uploadToCloudinary(base64Files);
         }
 
         const updatedStudent = await Student.findByIdAndUpdate(
@@ -68,7 +82,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
         await connectDB();
-        const studentId = params.id;
+        const studentId = (await Promise.resolve(params)).id; // Access id as a property of the resolved promise
         const student = await Student.findById(studentId);
         if (!student) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 });
@@ -84,5 +98,25 @@ export async function GET(request: Request, { params }: { params: { id: string }
             { error: error.message || "Failed to fetch student" },
             { status: 500 }
         );
+    }
+}
+
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+    try {
+        await connectDB();
+        const studentId = (await Promise.resolve(params)).id;
+
+        const student = await Student.findByIdAndDelete(studentId);
+
+        if (!student) {
+            return new NextResponse("Student not found", { status: 404 });
+        }
+
+        // Optionally, delete the student's images from Cloudinary here.
+
+        return new NextResponse("Student deleted successfully", { status: 200 });
+    } catch (error: any) {
+        console.error("Error deleting student:", error);
+        return new NextResponse(error.message, { status: 500 });
     }
 }

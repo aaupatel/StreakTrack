@@ -136,25 +136,37 @@ export async function GET(request: Request) {
               try {
                 const { studentId, timestamp } = data.student;
                 const attendanceDate = new Date(timestamp);
+                const dateOnly = new Date(attendanceDate.getFullYear(), attendanceDate.getMonth(), attendanceDate.getDate());
+
                 if (studentId && timestamp) {
-                  const newAttendance = new Attendance({
-                    deviceId: senderDeviceId,
+                  // Check if attendance is already marked for this student on this date
+                  const existingAttendance = await Attendance.findOne({
                     studentId: studentId,
-                    timestamp: new Date(timestamp),
-                    date: new Date(attendanceDate.getFullYear(), attendanceDate.getMonth(), attendanceDate.getDate()), // Set the 'date' field
-                    status: 'present', // Directly set status to 'present'
-                    method: 'automatic', // Directly set method to 'automatic'
-                    organizationId,
+                    date: dateOnly,
                   });
-                  await newAttendance.save();
-                  console.log(`Backend: Attendance saved for student ${studentId} at ${timestamp}`);
+
+                  if (!existingAttendance) {
+                    const newAttendance = new Attendance({
+                      deviceId: senderDeviceId,
+                      studentId: studentId,
+                      timestamp: new Date(timestamp),
+                      date: dateOnly, // Set the 'date' field
+                      status: 'present',
+                      method: 'automatic',
+                      organizationId,
+                    });
+                    await newAttendance.save();
+                    console.log(`Backend: Attendance saved for student ${studentId} on ${dateOnly.toISOString().split('T')[0]}`);
+                  } else {
+                    console.log(`Backend: Attendance already marked for student ${studentId} on ${dateOnly.toISOString().split('T')[0]}. Ignoring.`);
+                  }
                 } else {
                   console.error(`Backend: Incomplete attendance data received from ${senderDeviceId}:`, data.student);
                 }
               } catch (error) {
                 console.error(`Backend: Error saving attendance data:`, error);
               }
-            })
+            });
             // Forward attendance to all connected frontends for this device
             frontendClients.forEach((clientDeviceId, clientWs) => {
               if (clientDeviceId === senderDeviceId && clientWs.readyState === WebSocket.OPEN) {

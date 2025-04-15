@@ -10,7 +10,6 @@ import {
   UserPlus,
   LogOut,
   Menu,
-  Cctv,
   PackagePlusIcon,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
@@ -30,7 +29,6 @@ export default function DashboardLayout({
     { name: "Dashboard", href: "/dashboard", icon: BarChart2 },
     { name: "Students", href: "/dashboard/students", icon: Users },
     { name: "Attendance", href: "/dashboard/attendance", icon: CalendarCheck2 },
-    { name: "Realtime Attendance", href: "/dashboard/attendance/realtime", icon: Cctv,},
     { name: "Register Student", href: "/dashboard/register-student", icon: UserPlus,},
     // { name: "Members", href: "/dashboard/members", icon: UserPlus },
     { name: "Hardware Setup", href: "/dashboard/hardware", icon: PackagePlusIcon, },
