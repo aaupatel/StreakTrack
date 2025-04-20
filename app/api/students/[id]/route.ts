@@ -3,26 +3,24 @@ import { getServerSession } from "next-auth";
 import connectDB from "@/lib/mongodb";
 import Student from "@/models/Student";
 import { authOptions } from "@/lib/auth";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { deleteFromCloudinary, uploadToCloudinary } from "@/lib/cloudinary";
 
-async function fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
+function getPublicIdFromUrl(url: string | undefined): string | undefined {
+    if (!url) return undefined;
+    const parts = url.split('/');
+    const imageNameWithExtension = parts[parts.length - 1];
+    const imageName = imageNameWithExtension.split('.')[0];
+    return imageName;
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
     try {
         const session = await getServerSession(authOptions);
-
         if (!session?.user?.organizationId || !session?.user?.id || (session.user.role !== 'admin' && session.user.role !== 'co-admin')) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
         await connectDB();
-        const studentId = (await Promise.resolve(params)).id; // Access id as a property of the resolved promise
+        const studentId = (await Promise.resolve(params)).id;
         const formData = await request.formData();
         const name = formData.get("name") as string;
         const branch = formData.get("branch") as string;
@@ -30,24 +28,58 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         const contactNo = formData.get("contactNo") as string;
         const fatherName = formData.get("fatherName") as string;
         const fatherContactNo = formData.get("fatherContactNo") as string;
-        const files: File[] = formData.getAll("images") as File[];
+        const files: (File | null)[] = formData.getAll("images") as (File | null)[];
 
         const student = await Student.findById(studentId);
         if (!student) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 });
         }
 
-        let imageUrls: string[] = student.images;
+        const existingImageUrls = student.images || [];
+        const newImageUrls: (string | null)[] = [];
+        const publicIdsToDelete: string[] = [];
 
-        if (files && files.length > 0) {
-            const base64Files: string[] = [];
-            for (const file of files) {
-                const base64 = await fileToBase64(file);
-                base64Files.push(base64);
+        for (let i = 0; i < Math.max(files.length, existingImageUrls.length); i++) {
+            const file = files[i];
+            if (file instanceof File) {
+                try {
+                    const buffer = await file.arrayBuffer();
+                    const bytes = Buffer.from(buffer);
+                    const uploadResponse = await new Promise((resolve, reject) => {
+                        cloudinary.uploader.upload_stream({ folder: "StreakTrack" }, (error, result) => {
+                            if (error) {
+                                reject(error);
+                            } else {
+                                resolve(result?.secure_url);
+                            }
+                        }).end(bytes);
+                    });
+                    newImageUrls.push(uploadResponse as string);
+                    if (existingImageUrls[i]) {
+                        const publicId = getPublicIdFromUrl(existingImageUrls[i]);
+                        if (publicId) {
+                            publicIdsToDelete.push(publicId);
+                        }
+                    }
+                } catch (error: any) {
+                    console.error("Cloudinary Upload Error:", error);
+                    newImageUrls.push(null); // Indicate upload failure
+                }
+            } else if (file === null) {
+                newImageUrls.push(null);
+                if (existingImageUrls[i]) {
+                    const publicId = getPublicIdFromUrl(existingImageUrls[i]);
+                    if (publicId) {
+                        publicIdsToDelete.push(publicId);
+                    }
+                }
+            } else {
+                newImageUrls.push(existingImageUrls[i] || null);
             }
-            imageUrls = await uploadToCloudinary(base64Files);
         }
 
+        await deleteFromCloudinary(publicIdsToDelete);
+        const finalImageUrls = newImageUrls.filter(url => url !== null) as string[];
         const updatedStudent = await Student.findByIdAndUpdate(
             studentId,
             {
@@ -57,7 +89,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
                 contactNo,
                 fatherName,
                 fatherContactNo,
-                images: imageUrls,
+                images: finalImageUrls,
             },
             { new: true }
         );

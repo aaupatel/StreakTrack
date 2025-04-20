@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Camera, Wifi, Power, RefreshCw, Plus, Cctv, UserCheck } from "lucide-react";
+import { Camera, Power, RefreshCw, Plus, Cctv, UserCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
 
@@ -62,6 +62,7 @@ export default function HardwarePage() {
   >(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [lastDetection, setLastDetection] = useState<any>(null);
+  const [loader, setLoader] = useState(true);
 
   const form = useForm<z.infer<typeof deviceFormSchema>>({
     resolver: zodResolver(deviceFormSchema),
@@ -120,7 +121,8 @@ export default function HardwarePage() {
           if (data.type === "live_stream" && data.frame) {
             const base64Data = data.frame;
             setVideoFeedSource(`data:image/jpeg;base64,${base64Data}`);
-          } else if (data.type === "attendance" && data.student) {
+            setLoader(false);
+          } else if ((data.type === "attendance" || data.type === "detected") && data.student) {
             setLastDetection(data.student);
           }
         } catch (error) {
@@ -134,6 +136,7 @@ export default function HardwarePage() {
             reader.result.startsWith("data:image/jpeg;base64,")
           ) {
             setVideoFeedSource(reader.result);
+            setLoader(false);
           } else {
             console.warn("Received non-image Blob data.");
           }
@@ -339,15 +342,8 @@ export default function HardwarePage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col items-end">
                   <div className="flex items-center gap-2">
-                    <Wifi
-                      className={`h-5 w-5 ${
-                        device.status === "online"
-                          ? "text-green-500"
-                          : "text-gray-400"
-                      }`}
-                    />
                     <span
                       className={`text-sm ${
                         device.status === "online"
@@ -357,8 +353,19 @@ export default function HardwarePage() {
                     >
                       {device.status}
                     </span>
+                    <Power
+                      className={`h-5 w-5 ${
+                        device.status === "online"
+                          ? "text-green-500"
+                          : "text-red-400"
+                      }`}
+                    />
                   </div>
-                  <Power className="h-5 w-5 text-gray-400" />
+                  {device.status === "offline" && device.lastSeen && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      Last seen: {new Date(device.lastSeen).toLocaleString()}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -416,25 +423,37 @@ export default function HardwarePage() {
               <p>No online devices</p>
             )}
           </div>
-          <div className="flex flex-col gap-4">
-            <div
-              id="video-feed"
-              className="bg-gray-100 w-full rounded-md space-y-4 overflow-hidden"
-              ref={videoFeedRef}
-            >
-              {videoFeedSource && (
-                <div className="relative w-full h-full">
-                  <Image
-                    src={videoFeedSource}
-                    alt="Camera Feed"
-                    width={100}
-                    height={100}
-                    style={{ width: "100%", height: "auto" }}
-                  />
-                </div>
-              )}
+          {isStreaming ? (
+            <div className="flex flex-col gap-4">
+              <div
+                id="video-feed"
+                className="bg-gray-100 w-full rounded-md space-y-4 overflow-hidden"
+                ref={videoFeedRef}
+              >
+                {loader ? (
+                  <div className="flex justify-center items-center w-full h-full">
+                    Spinner
+                    <div className="loader"></div>
+                  </div>
+                ) : (
+                  videoFeedSource && (
+                    <div className="relative w-full h-full">
+                      <Image
+                        src={videoFeedSource}
+                        alt="Camera Feed"
+                        width={100}
+                        height={100}
+                        style={{ width: "100%", height: "auto" }}
+                      />
+                    </div>
+                  )
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+            </div>
+          )}
         </Card>
       </div>
 

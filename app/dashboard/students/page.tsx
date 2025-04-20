@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Edit, Search, Trash } from "lucide-react";
+import { Edit, Search, Trash, Upload, X } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,22 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { FormLabel } from "@/components/ui/form";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+const studentSchema = z.object({
+  name: z.string().min(3, { message: "Name must be at least 3 characters." }),
+  branch: z.string(),
+  enrollmentNo: z.string(),
+  contactNo: z.string().optional(),
+  fatherName: z.string().optional(),
+  fatherContactNo: z.string().optional(),
+  updatedImages: z.array(z.any().nullable()).optional(),
+});
+
+type StudentFormValues = z.infer<typeof studentSchema>;
 
 interface Student {
   _id: string;
@@ -41,23 +57,23 @@ export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [updatedStudentData, setUpdatedStudentData] = useState<{
-    name: string;
-    branch: string;
-    enrollmentNo: string;
-    contactNo: string;
-    fatherName: string;
-    fatherContactNo: string;
-    images: File[];
-  }>({
-    name: "",
-    branch: "",
-    enrollmentNo: "",
-    contactNo: "",
-    fatherName: "",
-    fatherContactNo: "",
-    images: [],
+
+  const form = useForm<StudentFormValues>({
+    resolver: undefined,
+    defaultValues: {
+      name: "",
+      branch: "",
+      enrollmentNo: "",
+      contactNo: "",
+      fatherName: "",
+      fatherContactNo: "",
+      updatedImages: [null, null, null],
+    },
   });
+
+  const { handleSubmit, setValue, watch, reset } = form;
+  const updatedImages = watch("updatedImages");
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -77,7 +93,7 @@ export default function StudentsPage() {
     };
 
     fetchStudents();
-  }, []);
+  }, [toast]);
 
   const filteredStudents = students.filter((student) =>
     Object.values(student).some((value) =>
@@ -87,50 +103,51 @@ export default function StudentsPage() {
 
   const handleEdit = (student: Student) => {
     setSelectedStudent(student);
-    setUpdatedStudentData({
+    reset({
       name: student.name,
       branch: student.branch,
       enrollmentNo: student.enrollmentNo,
       contactNo: student.contactNo,
       fatherName: student.fatherName,
       fatherContactNo: student.fatherContactNo,
-      images: [], // Reset images for new uploads
+      updatedImages: [null, null, null],
     });
     setOpen(true);
   };
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  const handleImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number
   ) => {
-    const { name, value } = e.target;
-    setUpdatedStudentData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    const file = e.target.files?.[0] || null;
+    const newUpdatedImages = [...(updatedImages || [])];
+    newUpdatedImages[index] = file;
+    setValue("updatedImages", newUpdatedImages);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setUpdatedStudentData((prev) => ({
-      ...prev,
-      images: files,
-    }));
+  const handleRemoveImage = (index: number) => {
+    const newUpdatedImages = [...(updatedImages || [])];
+    newUpdatedImages[index] = null;
+    setValue("updatedImages", newUpdatedImages);
   };
 
-  const handleUpdateStudent = async () => {
+  const handleUpdateStudent = handleSubmit(async (data) => {
     if (!selectedStudent) return;
 
     try {
       const formData = new FormData();
-      formData.append("name", updatedStudentData.name);
-      formData.append("branch", updatedStudentData.branch);
-      formData.append("enrollmentNo", updatedStudentData.enrollmentNo);
-      formData.append("contactNo", updatedStudentData.contactNo);
-      formData.append("fatherName", updatedStudentData.fatherName);
-      formData.append("fatherContactNo", updatedStudentData.fatherContactNo);
-      updatedStudentData.images.forEach((image) =>
-        formData.append("images", image)
-      );
+      formData.append("name", data.name);
+      formData.append("branch", data.branch);
+      formData.append("enrollmentNo", data.enrollmentNo);
+      formData.append("contactNo", data.contactNo || "");
+      formData.append("fatherName", data.fatherName || "");
+      formData.append("fatherContactNo", data.fatherContactNo || "");
+
+      data.updatedImages?.forEach((file) => {
+        if (file) {
+          formData.append("images", file);
+        }
+      });
 
       const id = selectedStudent._id;
 
@@ -164,7 +181,7 @@ export default function StudentsPage() {
         description: error.message || "Network error.",
       });
     }
-  };
+  });
 
   const handleDeleteStudent = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this student?")) {
@@ -270,7 +287,7 @@ export default function StudentsPage() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Student Details</DialogTitle>
             <DialogDescription>
@@ -278,92 +295,112 @@ export default function StudentsPage() {
             </DialogDescription>
           </DialogHeader>
           {selectedStudent && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Name
-                </Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={updatedStudentData.name}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
+            <FormProvider {...form}>
+              <div className="grid gap-4 py-4">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Student Name</Label>
+                    <Input {...form.register("name")} id="name" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="enrollmentNo">Enrollment Number</Label>
+                    <Input
+                      {...form.register("enrollmentNo")}
+                      id="enrollmentNo"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="branch">Branch</Label>
+                  <Input {...form.register("branch")} id="branch" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fatherName">Father&apos;s Name</Label>
+                  <Input {...form.register("fatherName")} id="fatherName" />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="contactNo">Student Contact Number</Label>
+                    <Input
+                      {...form.register("contactNo")}
+                      id="contactNo"
+                      type="tel"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fatherContactNo">
+                      Father&apos;s Contact Number
+                    </Label>
+                    <Input
+                      {...form.register("fatherContactNo")}
+                      id="fatherContactNo"
+                      type="tel"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <FormLabel>Student Images (Click to update)</FormLabel>
+                  <div className="grid grid-cols-3 gap-4">
+                    {[0, 1, 2].map((index) => (
+                      <div
+                        key={index}
+                        className="aspect-square relative border rounded-lg overflow-hidden hover:border-primary/50 transition-colors cursor-pointer"
+                      >
+                        {selectedStudent.images[index] &&
+                          !updatedImages?.[index] && (
+                            <Image
+                              src={selectedStudent.images[index]}
+                              alt={`Student ${index + 1}`}
+                              fill
+                              className="object-cover"
+                            />
+                          )}
+                        {updatedImages?.[index] && (
+                          <Image
+                            src={URL.createObjectURL(updatedImages[index]!)}
+                            alt={`New Student ${index + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleImageChange(e, index)}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                        />
+                        {(selectedStudent.images[index] ||
+                          updatedImages?.[index]) && (
+                          <div className="absolute top-0 right-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="bg-gray-200 text-red-500 rounded-full shadow-md hover:bg-red-500 hover:text-gray-200"
+                              onClick={() => handleRemoveImage(index)}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                        {!selectedStudent.images[index] &&
+                          !updatedImages?.[index] && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-500">
+                              <Upload className="w-6 h-6" />
+                            </div>
+                          )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Click on an image to update it.
+                  </p>
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="branch" className="text-right">
-                  Branch
-                </Label>
-                <Input
-                  id="branch"
-                  name="branch"
-                  value={updatedStudentData.branch}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="enrollmentNo" className="text-right">
-                  Enrollment No.
-                </Label>
-                <Input
-                  id="enrollmentNo"
-                  name="enrollmentNo"
-                  value={updatedStudentData.enrollmentNo}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="contactNo" className="text-right">
-                  Contact No.
-                </Label>
-                <Input
-                  id="contactNo"
-                  name="contactNo"
-                  value={updatedStudentData.contactNo}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="fatherName" className="text-right">
-                  Father&apos;s Name
-                </Label>
-                <Input
-                  id="fatherName"
-                  name="fatherName"
-                  value={updatedStudentData.fatherName}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="fatherContactNo" className="text-right">
-                  Father&apos;s Contact
-                </Label>
-                <Input
-                  id="fatherContactNo"
-                  name="fatherContactNo"
-                  value={updatedStudentData.fatherContactNo}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="images" className="text-right">
-                  Update Images
-                </Label>
-                <Input
-                  type="file"
-                  id="images"
-                  multiple
-                  onChange={handleImageChange}
-                  className="col-span-3"
-                />
-              </div>
-            </div>
+            </FormProvider>
           )}
           <DialogFooter>
             <Button

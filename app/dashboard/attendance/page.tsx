@@ -147,7 +147,10 @@ export default function AttendancePage() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
-        <div>
+        <div className="border rounded-lg">
+          <h2 className="px-4 py-2 font-semibold border-b">
+            Calendar {monthString}
+          </h2>
           <Calendar
             mode="single"
             selected={date}
@@ -169,62 +172,66 @@ export default function AttendancePage() {
           />
         </div>
 
-        <div className="border rounded-lg overflow-hidden shadow-sm">
-          <h2 className="px-4 py-2 font-semibold border-b">Daily Attendance {formattedDate}</h2>
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="font-semibold">Roll No.</TableHead>
-                <TableHead className="font-semibold">Name</TableHead>
-                <TableHead className="font-semibold text-center">
-                  Status
-                </TableHead>
-                <TableHead className="font-semibold">Method</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {attendance.map((record) => (
-                <TableRow key={record._id} className="hover:bg-gray-50">
-                  <TableCell className="font-medium">
-                    {record.studentId.enrollmentNo}
-                  </TableCell>
-                  <TableCell>{record.studentId.name}</TableCell>
-                  <TableCell className="text-center">
-                    <span
-                      className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold ${
-                        record.status === "present"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {record.status === "present" ? "P" : "A"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        record.method === "automatic"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {record.method}
-                    </span>
-                  </TableCell>
+        <div className="border rounded-lg shadow-sm">
+          <h2 className="px-4 py-2 font-semibold border-b">
+            Daily Attendance {formattedDate}
+          </h2>
+          <div className="overflow-y-scroll max-h-72">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="font-semibold">Roll No.</TableHead>
+                  <TableHead className="font-semibold">Name</TableHead>
+                  <TableHead className="font-semibold text-center">
+                    Status
+                  </TableHead>
+                  <TableHead className="font-semibold">Method</TableHead>
                 </TableRow>
-              ))}
-              {attendance.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={4}
-                    className="text-center py-8 text-gray-500"
-                  >
-                    No attendance records found for this date
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {attendance.map((record) => (
+                  <TableRow key={record._id} className="hover:bg-gray-50">
+                    <TableCell className="font-medium">
+                      {record.studentId.enrollmentNo}
+                    </TableCell>
+                    <TableCell>{record.studentId.name}</TableCell>
+                    <TableCell className="text-center">
+                      <span
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold ${
+                          record.status === "present"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {record.status === "present" ? "P" : "A"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          record.method === "automatic"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {record.method}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {attendance.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="text-center py-8 text-gray-500"
+                    >
+                      No attendance records found for this date
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
 

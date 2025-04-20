@@ -50,7 +50,10 @@ export async function GET(request: Request) {
 
         connectDB().then(async () => {
           try {
-            await Device.findOneAndUpdate({ _id: deviceId }, { status: "online" });
+            await Device.findOneAndUpdate(
+              { _id: deviceId },
+              { status: "online", lastSeen: new Date() }
+            );
             console.log(`Device ${deviceId} status updated to online.`);
 
             if (!ObjectId.isValid(organizationId)) {
@@ -93,7 +96,10 @@ export async function GET(request: Request) {
 
           connectDB().then(async () => {
             try {
-              await Device.findOneAndUpdate({ _id: deviceId }, { status: "offline" });
+              await Device.findOneAndUpdate(
+                { _id: deviceId },
+                { status: "offline", lastSeen: new Date() }
+              );
               console.log(`Device ${deviceId} status updated to offline.`);
             } catch (error) {
               console.error(`Error updating device ${deviceId} status:`, error);
@@ -174,6 +180,15 @@ export async function GET(request: Request) {
               }
             });
             console.log(`Backend: Received attendance from hardware ${senderDeviceId}:`, data);
+          } else if (data.type === "detected") {
+            // Forward detected person's data to all connected frontends for this device
+            const hardwareSocket = hardwareClients.get(senderDeviceId);
+            frontendClients.forEach((clientDeviceId, clientWs) => {
+              if (clientDeviceId === senderDeviceId && clientWs.readyState === WebSocket.OPEN) {
+                clientWs.send(JSON.stringify(data));
+              }
+            });
+            console.log(`Backend: Received detected from hardware ${senderDeviceId}:`, data);
           } else if (hardwareClients.has(senderDeviceId)) { // Message from hardware (live_stream)
             if (data.type === "live_stream" && data.frame) {
               // Forward live stream data to all frontends connected to this hardware

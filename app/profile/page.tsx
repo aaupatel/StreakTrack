@@ -58,7 +58,7 @@ export default function ProfilePage() {
     image?: string;
     contactNo?: string;
   }) {
-    const response = await fetch("/api/user", {
+    const response = await fetch("/api/profile", {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -175,7 +175,7 @@ export default function ProfilePage() {
                     <Pencil className="mr-2 h-4 w-4" /> Edit Profile
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>
                     <DialogTitle>Edit Profile</DialogTitle>
                     <DialogDescription>
