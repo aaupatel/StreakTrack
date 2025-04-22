@@ -49,6 +49,8 @@ export const options: NextAuthOptions = {
             role: user.role,
             organizationName: user.organizationName,
             organization: organization || null,
+            profileImage: user.profileImage,
+            contactNo: user.contactNo,
           };
         } catch (error) {
           console.error("Auth error:", error);
@@ -68,7 +70,9 @@ export const options: NextAuthOptions = {
         token.organizationId = user.organizationId;
         token.role = user.role;
         token.organizationName = user.organizationName;
-        token.organization = user.organization; 
+        token.organization = user.organization;
+        token.profileImage = user.profileImage;
+        token.contactNo = user.contactNo;
       }
       return token;
     },
@@ -79,6 +83,8 @@ export const options: NextAuthOptions = {
         session.user.role = token.role;
         session.user.organizationName = token.organizationName;
         session.organization = token.organization;
+        session.user.profileImage = token.profileImage;
+        session.user.contactNo = token.contactNo;
       }
       return session;
     },

@@ -66,7 +66,7 @@ export default function DashboardLayout({
             <Logo className="h-16 w-16 text-primary" />
           </div> */}
 
-          <nav className="flex-1 px-4 py-4 space-y-1">
+          <nav className="flex-1 px-4 py-4 space-y-1 mt-14 md:mt-0">
             {navigation.map((item) => {
               const isActive = pathname === item.href;
               return (

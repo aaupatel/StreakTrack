@@ -25,14 +25,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
+import CameraCaptureDialog from "@/components/ui/CameraCaptureDialog";
 
 const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  name: z.string().min(3, "Name must be at least 3 characters"),
   branch: z.string().min(2, "Branch must be at least 2 characters"),
-  enrollmentNo: z.string().min(5, "Enrollment number must be at least 5 characters"),
+  enrollmentNo: z
+    .string()
+    .min(5, "Enrollment number must be at least 5 characters"),
   fatherName: z.string().min(2, "Father's name must be at least 2 characters"),
-  contactNo: z.string().min(10, "Contact number must be at least 10 characters"),
-  fatherContactNo: z.string().min(10, "Father's contact number must be at least 10 characters"),
+  contactNo: z
+    .string()
+    .regex(/^\d{10}$/, "Contact number must be exactly 10 digits"),
+  fatherContactNo: z
+    .string()
+    .regex(/^\d{10}$/, "Father's contact number must be exactly 10 digits"),
 });
 
 const engineeringBranches = [
@@ -48,6 +55,7 @@ const engineeringBranches = [
 export default function RegisterStudent() {
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -60,6 +68,10 @@ export default function RegisterStudent() {
       fatherContactNo: "",
     },
   });
+
+  const handleCaptureImage = (image: string) => {
+    setImages((prev) => [...prev, image].slice(0, 3));
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -241,11 +253,40 @@ export default function RegisterStudent() {
 
           <div className="space-y-4">
             <FormLabel>Student Images (3 required)</FormLabel>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowCamera(true)}
+                disabled={images.length >= 3}
+              >
+                Capture from Camera
+              </Button>
+
+              <label className="cursor-pointer text-secondary-foreground px-4 py-2 rounded-md border hover:bg-secondary/80 transition">
+                Upload Image
+                <Input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  disabled={images.length >= 3}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            <CameraCaptureDialog
+              open={showCamera}
+              onClose={() => setShowCamera(false)}
+              onCapture={handleCaptureImage}
+            />
+
+            <div className="grid md:grid-cols-3 gap-4">
               {[0, 1, 2].map((index) => (
                 <div
                   key={index}
-                  className="aspect-square relative border-2 border-dashed rounded-lg overflow-hidden hover:border-primary/50 transition-colors"
+                  className="aspect-square relative border-2 border-dashed rounded-lg overflow-hidden"
                 >
                   {images[index] ? (
                     <div className="relative group">
@@ -259,30 +300,22 @@ export default function RegisterStudent() {
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
-                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full md:opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
                   ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <Upload className="w-8 h-8 text-gray-400" />
-                      <span className="text-sm text-gray-500 mt-2">
-                        Image {index + 1}
-                      </span>
+                    <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">
+                      Image {index + 1}
                     </div>
                   )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                  />
                 </div>
               ))}
             </div>
             <p className="text-sm text-gray-500">
-              Upload 3 clear face photos. Each image must be less than 5MB.
+              Upload or capture 3 clear face photos. Each image must be less
+              than 5MB.
             </p>
           </div>
 

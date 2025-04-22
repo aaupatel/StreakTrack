@@ -1,80 +1,60 @@
-// app/profile/route.ts
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { uploadToCloudinary } from '@/lib/cloudinary'; // Adjust the path to your cloudinary utility
-import connectDB from '@/lib/mongodb';
-import { authOptions } from '@/lib/auth';
-import User from '@/models/User';
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import User from "@/models/User";
+import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
+import connectDB from "@/lib/mongodb";
 
 export async function PUT(request: Request) {
-    try {
-        const session = await getServerSession(authOptions);
+  try {
+    const session = await getServerSession(authOptions);
 
-        if (!session?.user?.email) {
-            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-        }
+    if (!session?.user?.email) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
-        await connectDB();
-        const user = await User.findOne({ email: session.user.email });
+    await connectDB();
+    const user = await User.findOne({ email: session.user.email });
+    if (!user) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    }
 
-        if (!user) {
-            return NextResponse.json({ message: 'User not found' }, { status: 404 });
-        }
+    const formData = await request.formData();
+    const name = formData.get("name") as string | null;
+    const contactNo = formData.get("contactNo") as string | null;
+    const base64Image = formData.get("image") as string | null;
 
-        const formData = await request.formData();
-        const name = formData.get('name') as string | null;
-        const email = formData.get('email') as string | null;
-        const contactNo = formData.get('contactNo') as string | null;
-        const imageFile = formData.get('image') as File | null;
+    const updatePayload: any = {};
 
-        const updates: {
-            name?: string;
-            email?: string;
-            contactNo?: string;
-            image?: string;
-        } = {};
+    if (name && name !== user.name) {
+      updatePayload.name = name;
+    }
 
-        if (name !== null) {
-            updates.name = name;
-        }
+    if (contactNo && contactNo !== user.contactNo) {
+      updatePayload.contactNo = contactNo;
+    }
 
-        if (email !== null) {
-            // Add email format validation if needed
-            const existingUserWithEmail = await User.findOne({ email });
-            if (existingUserWithEmail && existingUserWithEmail._id.toString() !== user._id.toString()) {
-                return NextResponse.json({ message: 'Email already in use' }, { status: 400 });
-            }
-            updates.email = email;
-        }
+    if (name) user.name = name;
+    if (contactNo) user.contactNo = contactNo;
 
-        if (contactNo !== null) {
-            // You might want to add validation for contactNo format here
-            updates.contactNo = contactNo;
-        }
-        const imageUrl = await uploadToCloudinary(imageFile)
-        if (imageUrl) {
-          updates.image = imageUrl;
-        } else {
-          return NextResponse.json({ message: 'Failed to upload image to Cloudinary' }, { status: 500 });
-        }
-      } catch (cloudinaryError: any) {
-        console.error('Cloudinary error:', cloudinaryError);
-        return NextResponse.json({ message: 'Failed to upload image to Cloudinary', error: cloudinaryError.message }, { status: 500 });
+    if (base64Image) {
+      if (user.image) {
+        await deleteFromCloudinary(user.image);
       }
+      const imageUrls = await uploadToCloudinary([base64Image]);
+      updatePayload.image = imageUrls[0];
+      user.profileImage = imageUrls[0];
     }
 
-    if (Object.keys(updates).length > 0) {
-      const updatedUser = await User.findByIdAndUpdate(user._id, updates, {
-        new: true,
-      }).select('-password'); // Exclude password from the response
-
-      return NextResponse.json(updatedUser, { status: 200 });
+    if (Object.keys(updatePayload).length > 0) {
+      await User.updateOne({ _id: user._id }, { $set: updatePayload });
     }
 
-    return NextResponse.json(user.select('-password'), { status: 200, message: 'No updates needed' });
+    await user.save();
 
-  } catch (error: any) {
-    console.error('Error updating profile:', error);
-    return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
+    return NextResponse.json({ ...user.toObject(), ...updatePayload });
+  } catch (err: any) {
+    console.error("Profile update error:", err);
+    return NextResponse.json({ message: "Server error", error: err.message }, { status: 500 });
   }
 }

@@ -35,14 +35,20 @@ export async function uploadToCloudinary(base64Files: string[]): Promise<string[
     }
 }
 
-export const deleteFromCloudinary = async (publicIds: string[]): Promise<void> => {
+export async function deleteFromCloudinary(imageUrls: string[]): Promise<void> {
     try {
-        if (publicIds.length > 0) {
-            const deleteResult = await cloudinary.v2.uploader.destroy(publicIds, { resource_type: 'image' });
-            console.log("Cloudinary Delete Result:", deleteResult);
+        for (const url of imageUrls) {
+            const publicId = url
+                ?.split("/")
+                .pop()
+                ?.split(".")[0];
+
+            if (publicId) {
+                await cloudinary.v2.uploader.destroy(`StreakTrack/${publicId}`);
+            }
         }
     } catch (error: any) {
-        console.error("Cloudinary Delete Error:", error);
+        console.error("Cloudinary Deletion Error:", error);
         throw new Error(error.message || "Failed to delete images from Cloudinary.");
     }
-};
+}

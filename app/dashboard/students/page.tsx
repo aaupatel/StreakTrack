@@ -23,21 +23,50 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { FormLabel } from "@/components/ui/form";
+import { toast } from "sonner";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const studentSchema = z.object({
-  name: z.string().min(3, { message: "Name must be at least 3 characters." }),
-  branch: z.string(),
-  enrollmentNo: z.string(),
-  contactNo: z.string().optional(),
-  fatherName: z.string().optional(),
-  fatherContactNo: z.string().optional(),
+  name: z.string().min(3, "Name must be at least 3 characters"),
+  branch: z.string().min(2, "Branch must be at least 2 characters"),
+  enrollmentNo: z
+    .string()
+    .min(5, "Enrollment number must be at least 5 characters"),
+  fatherName: z.string().min(2, "Father's name must be at least 2 characters"),
+  contactNo: z
+    .string()
+    .regex(/^\d{10}$/, "Contact number must be exactly 10 digits"),
+  fatherContactNo: z
+    .string()
+    .regex(/^\d{10}$/, "Father's contact number must be exactly 10 digits"),
   updatedImages: z.array(z.any().nullable()).optional(),
 });
+
+const engineeringBranches = [
+  "Computer Science Engineering",
+  "Information Technology",
+  "Electronics and Communication Engineering",
+  "Electrical Engineering",
+  "Mechanical Engineering",
+  "Civil Engineering",
+  "Agricultural Engineering",
+];
 
 type StudentFormValues = z.infer<typeof studentSchema>;
 
@@ -59,7 +88,7 @@ export default function StudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   const form = useForm<StudentFormValues>({
-    resolver: undefined,
+    resolver: zodResolver(studentSchema),
     defaultValues: {
       name: "",
       branch: "",
@@ -74,8 +103,6 @@ export default function StudentsPage() {
   const { handleSubmit, setValue, watch, reset } = form;
   const updatedImages = watch("updatedImages");
 
-  const { toast } = useToast();
-
   useEffect(() => {
     const fetchStudents = async () => {
       try {
@@ -84,16 +111,12 @@ export default function StudentsPage() {
         setStudents(data);
       } catch (error) {
         console.error("Failed to fetch students:", error);
-        toast({
-          variant: "destructive",
-          title: "Error fetching students.",
-          description: "Please try again later.",
-        });
+        toast.error("Error fetching students.");
       }
     };
 
     fetchStudents();
-  }, [toast]);
+  }, []);
 
   const filteredStudents = students.filter((student) =>
     Object.values(student).some((value) =>
@@ -131,29 +154,57 @@ export default function StudentsPage() {
     setValue("updatedImages", newUpdatedImages);
   };
 
+  // Utility function to convert a File to a Base64 string
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64String = result.split(",")[1];
+        resolve(base64String);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const handleUpdateStudent = handleSubmit(async (data) => {
     if (!selectedStudent) return;
 
     try {
-      const formData = new FormData();
-      formData.append("name", data.name);
-      formData.append("branch", data.branch);
-      formData.append("enrollmentNo", data.enrollmentNo);
-      formData.append("contactNo", data.contactNo || "");
-      formData.append("fatherName", data.fatherName || "");
-      formData.append("fatherContactNo", data.fatherContactNo || "");
+      const updatedImagesBase64: string[] = [];
+      const updatedIndices: number[] = [];
 
-      data.updatedImages?.forEach((file) => {
-        if (file) {
-          formData.append("images", file);
+      if (data.updatedImages) {
+        for (let i = 0; i < data.updatedImages.length; i++) {
+          const file = data.updatedImages[i];
+          if (file) {
+            const base64 = await fileToBase64(file);
+            updatedImagesBase64.push(base64);
+            updatedIndices.push(i);
+          }
         }
-      });
+      }
+
+      const payload = {
+        name: data.name,
+        branch: data.branch,
+        enrollmentNo: data.enrollmentNo,
+        contactNo: data.contactNo,
+        fatherName: data.fatherName,
+        fatherContactNo: data.fatherContactNo,
+        updatedImages: updatedImagesBase64.length ? updatedImagesBase64 : [],
+        updatedIndices: updatedIndices,
+      };
 
       const id = selectedStudent._id;
 
       const response = await fetch(`/api/students/${id}`, {
         method: "PUT",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -162,24 +213,15 @@ export default function StudentsPage() {
           prev.map((s) => (s._id === updatedStudent._id ? updatedStudent : s))
         );
         setOpen(false);
-        toast({
-          title: "Student updated successfully!",
-        });
+        toast.success("Student updated successfully!");
       } else {
         const errorData = await response.json();
-        toast({
-          variant: "destructive",
-          title: "Failed to update student.",
-          description: errorData?.error || "Something went wrong.",
-        });
+        console.error("Error updating student:", errorData);
+        toast.error("Failed to update student.");
       }
     } catch (error: any) {
       console.error("Error updating student:", error);
-      toast({
-        variant: "destructive",
-        title: "Failed to update student.",
-        description: error.message || "Network error.",
-      });
+      toast.error("Failed to update student.");
     }
   });
 
@@ -192,22 +234,15 @@ export default function StudentsPage() {
 
         if (response.ok) {
           setStudents((prev) => prev.filter((s) => s._id !== id));
-          toast({ title: "Student deleted successfully!" });
+          toast.success("Student deleted successfully!");
         } else {
           const errorData = await response.json();
-          toast({
-            variant: "destructive",
-            title: "Failed to delete student.",
-            description: errorData?.error || "Something went wrong.",
-          });
+          console.error("Error updating student:", errorData);
+          toast.error("Failed to delete student.");
         }
       } catch (error: any) {
         console.error("Error deleting student:", error);
-        toast({
-          variant: "destructive",
-          title: "Failed to delete student.",
-          description: error.message || "Network error.",
-        });
+        toast.error("Failed to delete student.");
       }
     }
   };
@@ -262,11 +297,12 @@ export default function StudentsPage() {
                 <TableCell>{student.fatherName}</TableCell>
                 <TableCell>{student.contactNo}</TableCell>
                 <TableCell>{student.fatherContactNo}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right md:flex justify-end items-center block">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-blue-500 hover:text-blue-600 mr-2"
+                    title="Update"
+                    className="text-blue-500 hover:text-blue-600 transition-all duration-200"
                     onClick={() => handleEdit(student)}
                   >
                     <Edit className="h-4 w-4" />
@@ -274,7 +310,8 @@ export default function StudentsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-red-500 hover:text-red-600"
+                    title="Delete"
+                    className="text-red-500 hover:text-red-600 transition-all duration-200"
                     onClick={() => handleDeleteStudent(student._id)}
                   >
                     <Trash className="h-4 w-4" />
@@ -287,7 +324,7 @@ export default function StudentsPage() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-screen overflow-y-auto p-6">
           <DialogHeader>
             <DialogTitle>Edit Student Details</DialogTitle>
             <DialogDescription>
@@ -298,53 +335,108 @@ export default function StudentsPage() {
             <FormProvider {...form}>
               <div className="grid gap-4 py-4">
                 <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Student Name</Label>
-                    <Input {...form.register("name")} id="name" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="enrollmentNo">Enrollment Number</Label>
-                    <Input
-                      {...form.register("enrollmentNo")}
-                      id="enrollmentNo"
-                    />
-                  </div>
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Student Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} id="name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="enrollmentNo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Enrollment Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} id="enrollmentNo" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="branch">Branch</Label>
-                  <Input {...form.register("branch")} id="branch" />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="branch"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Branch</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select branch" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {engineeringBranches.map((branch) => (
+                            <SelectItem key={branch} value={branch}>
+                              {branch}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                <div className="space-y-2">
-                  <Label htmlFor="fatherName">Father&apos;s Name</Label>
-                  <Input {...form.register("fatherName")} id="fatherName" />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="fatherName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Father&apos;s Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} id="fatherName" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="contactNo">Student Contact Number</Label>
-                    <Input
-                      {...form.register("contactNo")}
-                      id="contactNo"
-                      type="tel"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fatherContactNo">
-                      Father&apos;s Contact Number
-                    </Label>
-                    <Input
-                      {...form.register("fatherContactNo")}
-                      id="fatherContactNo"
-                      type="tel"
-                    />
-                  </div>
+                  <FormField
+                    control={form.control}
+                    name="contactNo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Student Contact Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} id="contactNo" type="tel" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="fatherContactNo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Father&apos;s Contact Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} id="fatherContactNo" type="tel" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <div className="space-y-4">
-                  <FormLabel>Student Images (Click to update)</FormLabel>
-                  <div className="grid grid-cols-3 gap-4">
+                  <FormLabel>Student Images</FormLabel>
+                  <div className="grid md:grid-cols-3 gap-4">
                     {[0, 1, 2].map((index) => (
                       <div
                         key={index}

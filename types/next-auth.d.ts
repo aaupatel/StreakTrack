@@ -7,6 +7,8 @@ declare module 'next-auth' {
       organizationId?: string;
       role?: 'admin' | 'co-admin';
       organizationName?: string;
+      profileImage?: string;
+      contactNo?: string;
     } & DefaultSession['user'];
     organization?: {
       _id: string;
@@ -30,6 +32,8 @@ declare module 'next-auth' {
     organizationId?: string;
     role?: 'admin' | 'co-admin';
     organizationName?: string;
+    profileImage?: string;
+    contactNo?: string;
     organization?: {
       _id: string;
       name: string;
@@ -54,6 +58,8 @@ declare module 'next-auth/jwt' {
     organizationId?: string;
     role?: 'admin' | 'co-admin';
     organizationName?: string;
+    profileImage?: string;
+    contactNo?: string; 
     organization?: {
       _id: string;
       name: string;

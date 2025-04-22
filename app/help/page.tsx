@@ -29,10 +29,10 @@ export default function SupportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-16">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Support</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Help Center</h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Get in touch with us or find answers to common questions.
           </p>
