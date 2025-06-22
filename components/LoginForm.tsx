@@ -47,7 +47,7 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         email: values.email,
         password: values.password,
-        redirect: false,
+        callbackUrl
       });
 
       if (result?.error) {
@@ -55,7 +55,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push(callbackUrl);
+    //   router.push(callbackUrl);
       toast.success("Logged in successfully");
     } catch (error) {
       toast.error("Failed to login");
