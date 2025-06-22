@@ -5,13 +5,7 @@ import Student from "@/models/Student";
 import { authOptions } from "@/lib/auth";
 import { deleteFromCloudinary, uploadToCloudinary } from "@/lib/cloudinary";
 
-interface RouteParams {
-    params: {
-        id: string;
-    };
-}
-
-export async function PUT(request: Request, { params }: RouteParams) {
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
     try {
         const session = await getServerSession(authOptions);
         if (
@@ -83,7 +77,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 }
 
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.organizationId) {
@@ -92,7 +86,6 @@ export async function GET(request: Request, { params }: RouteParams) {
         await connectDB();
         const { id: studentId } = await (params as any);
         const student = await Student.findById(studentId);
-
         if (!student) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 });
         }
@@ -110,7 +103,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 }
 
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.organizationId) {
@@ -120,25 +113,13 @@ export async function DELETE(request: Request, { params }: RouteParams) {
         await connectDB();
         const { id: studentId } = await (params as any);
 
-        if (!studentId) {
-            return NextResponse.json({ error: "Student ID is required" }, { status: 400 });
+        const student = await Student.findByIdAndDelete(studentId);
+
+        if (!student) {
+            return new NextResponse("Student not found", { status: 404 });
         }
 
-        // Verify organization ownership before deleting
-        const studentToDelete = await Student.findById(studentId);
-        if (!studentToDelete) {
-            return NextResponse.json({ message: "Student not found (might have already been deleted)" }, { status: 200 });
-        }
-        if (studentToDelete.organizationId.toString() !== session.user.organizationId.toString()) {
-            return NextResponse.json({ error: "Unauthorized to delete this student" }, { status: 403 });
-        }
-
-        // If student has images, delete them from Cloudinary before deleting the student record
-        if (studentToDelete.images && studentToDelete.images.length > 0) {
-            await deleteFromCloudinary(studentToDelete.images);
-        }
-
-        await Student.findByIdAndDelete(studentId);
+        // Optionally, delete the student's images from Cloudinary here.
 
         return new NextResponse("Student deleted successfully", { status: 200 });
     } catch (error: any) {
