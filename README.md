@@ -92,7 +92,7 @@ https://github.com/aaupatel/StreakTrack_Hardware
 1.  **Clone the Hardware Repository:**
 
     ```
-    git clone [https://github.com/aaupatel/StreakTrack_Hardware](https://github.com/aaupatel/StreakTrack_Hardware)
+    git clone https://github.com/aaupatel/StreakTrack_Hardware
     cd StreakTrack_Hardware
     ```
 
