@@ -39,6 +39,7 @@ export async function POST(request: Request) {
       status,
       method,
       markedBy: session.user.id,
+      organizationId: session.user.organizationId, // Ensure organizationId is saved with attendance
     });
 
     return NextResponse.json(attendance, { status: 201 });
@@ -63,9 +64,37 @@ export async function GET(request: Request) {
     const year = searchParams.get("year");
     const month = searchParams.get("month");
     const dateParam = searchParams.get("date");
+    const fetchAverage = searchParams.get("average") === "true"; // New parameter to request average
 
-    if (dateParam) {
-      // Fetch daily attendance
+    if (fetchAverage && year && month) {
+      // Logic for GET_MONTHLY_AVERAGE
+      const yearInt = parseInt(year, 10);
+      const monthInt = parseInt(month, 10);
+
+      const firstDayOfMonth = new Date(yearInt, monthInt - 1, 1);
+      const lastDayOfMonth = new Date(yearInt, monthInt, 0, 23, 59, 59, 999); // Last moment of the last day
+
+      const totalStudents = await Student.countDocuments({ organizationId: session.user.organizationId });
+      if (totalStudents === 0) {
+        return NextResponse.json({ average: 0 });
+      }
+
+      const presentCount = await Attendance.countDocuments({
+        organizationId: session.user.organizationId,
+        date: { $gte: firstDayOfMonth, $lte: lastDayOfMonth },
+        status: "present",
+      });
+
+      // Calculate total expected attendance based on actual days in month
+      const daysInMonth = lastDayOfMonth.getDate();
+      const totalPossibleAttendanceRecords = totalStudents * daysInMonth;
+
+      const averagePercentage = totalPossibleAttendanceRecords > 0 ? (presentCount / totalPossibleAttendanceRecords) * 100 : 0;
+
+      return NextResponse.json({ average: parseFloat(averagePercentage.toFixed(1)) });
+
+    } else if (dateParam) {
+      // Logic for daily attendance (previously in GET_ATTENDANCE)
       const selectedDateUTC = new Date(dateParam);
       selectedDateUTC.setUTCHours(0, 0, 0, 0);
 
@@ -76,11 +105,12 @@ export async function GET(request: Request) {
       const dailyAttendance = await Attendance.find({
         organizationId: session.user.organizationId,
         date: { $gte: selectedDateUTC, $lt: nextDayUTC },
-      }).populate("studentId", "_id name enrollmentNo branch");
+      }).populate("studentId", "_id name enrollmentNo branch"); // Populate with more student details
 
       return NextResponse.json(dailyAttendance);
+
     } else if (year && month) {
-      // Fetch monthly attendance
+      // Logic for monthly attendance report
       const firstDayOfMonth = new Date(parseInt(year), parseInt(month) - 1, 1);
       const lastDayOfMonth = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
 
@@ -100,7 +130,7 @@ export async function GET(request: Request) {
       });
 
       attendanceRecords.forEach(record => {
-        const studentEnrollmentNo = record.studentId.enrollmentNo;
+        const studentEnrollmentNo = (record.studentId as any).enrollmentNo; // Cast to any to access enrollmentNo
         const day = record.date.getDate();
         if (monthlyAttendanceWithEnrollment[studentEnrollmentNo]) {
           monthlyAttendanceWithEnrollment[studentEnrollmentNo][day] = 'P';
@@ -117,91 +147,13 @@ export async function GET(request: Request) {
       }
 
       return NextResponse.json(Object.values(monthlyAttendanceWithEnrollment));
+
     } else {
-      return NextResponse.json({ error: "Year and month or date are required" }, { status: 400 });
+      // If no specific parameters, return a bad request
+      return NextResponse.json({ error: "Missing required parameters. Provide 'date' for daily attendance, or 'year' and 'month' for monthly attendance/average." }, { status: 400 });
     }
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to fetch attendance" }, { status: 500 });
-  }
-}
-
-export async function GET_ATTENDANCE(request: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.organizationId || (session.user.role !== 'admin' && session.user.role !== 'co-admin')) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await connectDB();
-    const { searchParams } = new URL(request.url);
-    const dateParam = searchParams.get("date");
-
-    if (dateParam) {
-      const selectedDateUTC = new Date(dateParam);
-      selectedDateUTC.setUTCHours(0, 0, 0, 0);
-      const nextDayUTC = new Date(selectedDateUTC);
-      nextDayUTC.setDate(selectedDateUTC.getDate() + 1);
-      nextDayUTC.setUTCHours(0, 0, 0, 0);
-
-      const dailyAttendance = await Attendance.find({
-        organizationId: session.user.organizationId,
-        date: { $gte: selectedDateUTC, $lt: nextDayUTC },
-      }).populate("studentId", "name"); // Adjust fields as needed
-
-      console.log(dailyAttendance)
-      return NextResponse.json(dailyAttendance);
-    } else {
-      return NextResponse.json({ error: "Date parameter is required for daily attendance" }, { status: 400 });
-    }
-  } catch (error: any) {
-    console.error("Error fetching attendance:", error);
-    return NextResponse.json({ error: "Failed to fetch attendance" }, { status: 500 });
-  }
-}
-
-export async function GET_MONTHLY_AVERAGE(request: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.organizationId || (session.user.role !== 'admin' && session.user.role !== 'co-admin')) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await connectDB();
-    const { searchParams } = new URL(request.url);
-    const yearStr = searchParams.get("year");
-    const monthStr = searchParams.get("month");
-
-    if (!yearStr || !monthStr) {
-      return NextResponse.json({ error: "Year and month parameters are required" }, { status: 400 });
-    }
-
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10);
-
-    const firstDayOfMonth = new Date(year, month - 1, 1);
-    const lastDayOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
-
-    const totalStudents = await Student.countDocuments({ organizationId: session.user.organizationId });
-    if (totalStudents === 0) {
-      return NextResponse.json({ average: 0 });
-    }
-
-    const presentCount = await Attendance.countDocuments({
-      organizationId: session.user.organizationId,
-      date: { $gte: firstDayOfMonth, $lte: lastDayOfMonth },
-      status: "present",
-    });
-
-    // Assuming each student should have one record per day
-    const totalExpectedAttendance = totalStudents * lastDayOfMonth.getDate();
-    const averagePercentage = totalExpectedAttendance > 0 ? (presentCount / totalExpectedAttendance) * 100 : 0;
-
-    console.log({average: parseFloat(averagePercentage.toFixed(1))})
-    return NextResponse.json({ average: parseFloat(averagePercentage.toFixed(1)) });
-  } catch (error: any) {
-    console.error("Error fetching monthly average attendance:", error);
-    return NextResponse.json({ error: "Failed to fetch monthly average attendance" }, { status: 500 });
+    console.error("Error in GET attendance API:", error);
+    return NextResponse.json({ error: error.message || "Failed to fetch attendance data" }, { status: 500 });
   }
 }
