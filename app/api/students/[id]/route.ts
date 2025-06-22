@@ -17,7 +17,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         }
 
         await connectDB();
-        const { id: studentId } = await (params as any);
+        const studentId = await params.id;
+        console.log(studentId)
         const data = await request.json();
 
         const student = await Student.findById(studentId);
@@ -84,7 +85,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
         await connectDB();
-        const { id: studentId } = await (params as any);
+        const studentId = await params.id;
         const student = await Student.findById(studentId);
         if (!student) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 });
@@ -109,9 +110,8 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         if (!session?.user?.organizationId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-
         await connectDB();
-        const { id: studentId } = await (params as any);
+        const studentId = await params.id;
 
         const student = await Student.findByIdAndDelete(studentId);
 
