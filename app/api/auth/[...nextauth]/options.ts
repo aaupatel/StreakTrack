@@ -43,7 +43,6 @@ export const authOptions: NextAuthOptions = {
               id: org._id.toString(),
               name: org.name,
               type: org.type,
-              // add only what's needed
             } : null;
           }          
 
