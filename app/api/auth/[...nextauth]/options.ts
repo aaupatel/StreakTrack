@@ -38,8 +38,14 @@ export const authOptions: NextAuthOptions = {
           // Fetch organization details if user is linked to an organization
           let organization = null;
           if (user.organizationId) {
-            organization = await Organization.findById(user.organizationId);
-          }
+            const org = await Organization.findById(user.organizationId);
+            organization = org ? {
+              id: org._id.toString(),
+              name: org.name,
+              type: org.type,
+              // add only what's needed
+            } : null;
+          }          
 
           return {
             id: user._id.toString(),
@@ -48,10 +54,10 @@ export const authOptions: NextAuthOptions = {
             organizationId: user.organizationId?.toString(),
             role: user.role,
             organizationName: user.organizationName,
-            organization: organization || null,
+            organization: organization,
             profileImage: user.profileImage,
             contactNo: user.contactNo,
-          };
+          } as any;
         } catch (error) {
           console.error("Auth error:", error);
           throw error; // Propagate the error for better error handling
