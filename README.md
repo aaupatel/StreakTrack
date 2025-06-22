@@ -20,7 +20,7 @@ StreakTrack is a modern face detection-based attendance management system design
 - **Database**: MongoDB
 - **Authentication**: NextAuth.js
 - **Styling**: Tailwind CSS, shadcn/ui
-- **Face Detection**: TensorFlow.js
+- **Face Detection**: OpenCV
 - **Hardware Integration**: Raspberry Pi, Python
 
 ## Prerequisites
@@ -34,8 +34,8 @@ StreakTrack is a modern face detection-based attendance management system design
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/streak-track.git
-   cd streak-track
+   git clone https://github.com/aaupatel/StreakTrack.git
+   cd StreakTrack
    ```
 
 2. Install dependencies:
@@ -59,163 +59,86 @@ StreakTrack is a modern face detection-based attendance management system design
 
 ## Hardware Setup (Raspberry Pi)
 
-1. Install required Python packages:
-   ```bash
-   pip install opencv-python websockets requests numpy
-   ```
+This section provides a quick guide to setting up the Raspberry Pi hardware for the StreakTrack attendance system, integrating it with the main web application.
 
-2. Create a new file `attendance_device.py`:
-   ```python
-   import cv2
-   import websockets
-   import asyncio
-   import json
-   import requests
-   import time
-   from datetime import datetime
+For complete source code, detailed wiring diagrams, and in-depth instructions, please refer to the dedicated hardware repository on GitHub:
+https://github.com/aaupatel/StreakTrack_Hardware
 
-   # Configuration
-   API_URL = "your_api_url"
-   DEVICE_ID = "your_device_id"
-   API_KEY = "your_api_key"
-   BATCH_SIZE = 10
-   INTERVAL = 5  # seconds
+## Prerequisites for Hardware Setup
 
-   class AttendanceDevice:
-       def __init__(self):
-           self.face_cascade = cv2.CascadeClassifier(
-               cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-           )
-           self.camera = cv2.VideoCapture(0)
-           self.attendance_buffer = []
+#### 1. Hardware Requirements
 
-       async def connect_websocket(self):
-           uri = f"ws://{API_URL}/api/ws?token={API_KEY}&deviceId={DEVICE_ID}"
-           async with websockets.connect(uri) as websocket:
-               while True:
-                   try:
-                       # Send heartbeat
-                       await websocket.send(json.dumps({
-                           "type": "heartbeat",
-                           "deviceId": DEVICE_ID
-                       }))
-                       
-                       # Process face detection
-                       detections = self.detect_faces()
-                       if detections:
-                           self.attendance_buffer.extend(detections)
-                       
-                       # Send batch if buffer is full
-                       if len(self.attendance_buffer) >= BATCH_SIZE:
-                           await self.send_attendance_batch()
-                       
-                       await asyncio.sleep(INTERVAL)
-                   except Exception as e:
-                       print(f"Error: {e}")
-                       break
+* Raspberry Pi (tested with Raspberry Pi 4 recommended)
 
-       def detect_faces(self):
-           ret, frame = self.camera.read()
-           if not ret:
-               return []
+* Raspberry Pi Camera Module V2 (or compatible)
 
-           gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-           faces = self.face_cascade.detectMultiScale(
-               gray, scaleFactor=1.1, minNeighbors=5
-           )
+* LCD Display (20x4 I2C)
 
-           detections = []
-           for (x, y, w, h) in faces:
-               face_roi = frame[y:y+h, x:x+w]
-               # Here you would implement face recognition
-               # For demo, we'll simulate a detection
-               detections.append({
-                   "timestamp": datetime.now().isoformat(),
-                   "deviceId": DEVICE_ID
-               })
+* Assorted LEDs (Green, Yellow, Blue, Red)
 
-           return detections
+* Jumper wires
 
-       async def send_attendance_batch(self):
-           if not self.attendance_buffer:
-               return
+* Power supply for Raspberry Pi
 
-           try:
-               response = requests.post(
-                   f"{API_URL}/api/hardware/attendance",
-                   headers={
-                       "Content-Type": "application/json",
-                       "x-api-key": API_KEY
-                   },
-                   json={"records": self.attendance_buffer}
-               )
-               
-               if response.status_code == 200:
-                   self.attendance_buffer = []
-               else:
-                   print(f"Failed to send attendance: {response.text}")
-           except Exception as e:
-               print(f"Error sending attendance: {e}")
 
-       def cleanup(self):
-           self.camera.release()
+#### 2. Software Requirements
+* Raspberry Pi OS (or compatible)
+* Python 3
+* Required Python libraries (install via `pip install -r requirements.txt` after cloning the hardware repo):
+    `asyncio`, `websockets`, `aiohttp`, `opencv-python`, `RPi.GPIO`, `picamera2`, `numpy`, `face_recognition`, `pickle`, `sqlite3`, `RPLCD`
 
-   async def main():
-       device = AttendanceDevice()
-       try:
-           while True:
-               try:
-                   await device.connect_websocket()
-               except Exception as e:
-                   print(f"Connection error: {e}")
-                   await asyncio.sleep(5)
-       finally:
-           device.cleanup()
+### Installation & Usage Summary
 
-   if __name__ == "__main__":
-       asyncio.run(main())
-   ```
+1.  **Clone the Hardware Repository:**
 
-3. Run the device script:
-   ```bash
-   python attendance_device.py
-   ```
+    ```
+    git clone [https://github.com/aaupatel/StreakTrack_Hardware](https://github.com/aaupatel/StreakTrack_Hardware)
+    cd StreakTrack_Hardware
+    ```
 
-## Environment Variables
+2.  **Install Python Dependencies:**
+    Navigate into the `StreakTrack_Hardware` directory and install the required Python packages:
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NEXT_PUBLIC_APP_URL` | Application URL | Yes |
-| `NEXTAUTH_SECRET` | JWT secret key | Yes |
-| `NEXTAUTH_URL` | Authentication URL | Yes |
-| `MONGODB_URI` | MongoDB connection string | Yes |
-| `EMAIL_USER` | Gmail address | Yes |
-| `EMAIL_PASS` | Gmail app password | Yes |
-| `HARDWARE_API_KEY` | API key for hardware devices | Yes |
-| `HARDWARE_DEVICE_INTERVAL` | Device data sending interval | No |
-| `MAX_BATCH_SIZE` | Max attendance records per batch | No |
+    ```
+    pip install -r requirements.txt
+    ```
 
-## API Routes
+3.  **Configure `config.json`:**
+    Create a `config.json` file in the `StreakTrack_Hardware` project root. This file holds essential configuration for your device to communicate with the web application.
 
-### Authentication
-- `POST /api/auth/register` - Register new organization
-- `POST /api/auth/login` - User login
-- `POST /api/auth/verify-email` - Verify email address
+    * You can find your `organizationId` on your **Profile Page** within the StreakTrack website.
 
-### Members
-- `GET /api/members` - List members
-- `POST /api/members` - Add new member
-- `GET /api/members/:id` - Get member details
+    * You can find the `deviceId` for each registered device in the **"Device Status"** section of the Hardware page on the StreakTrack website.
 
-### Attendance
-- `POST /api/attendance` - Mark attendance
-- `GET /api/attendance` - Get attendance records
-- `GET /api/attendance/export` - Export attendance data
+    ```
+    {
+      "website_url": "YOUR_WEBSOCKET_SERVER_URL",
+      "deviceId": "YOUR_DEVICE_ID",
+      "organizationId": "YOUR_ORGANIZATION_ID"
+    }
+    ```
 
-### Hardware
-- `POST /api/hardware/devices` - Register new device
-- `GET /api/hardware/devices` - List devices
-- `POST /api/hardware/attendance` - Batch attendance from devices
+    **Note:** Replace `YOUR_WEBSOCKET_SERVER_URL` with the actual URL of your deployed StreakTrack backend (e.g., `ws://your-deployed-url.vercel.app`).
+
+4.  **Physical Hardware Connections:**
+
+    * Connect the Raspberry Pi Camera Module to the CSI port.
+
+    * Connect the LCD display to the Raspberry Pi's I2C pins (SDA to GPIO2, SCL to GPIO3, VCC to 5V, GND to GND).
+
+    * Connect LEDs to specified GPIO pins (GREEN: 32, YELLOW: 36, BLUE: 38, RED: 40) via suitable current-limiting resistors.
+
+5.  **Run the Device Script:**
+    Navigate to the `StreakTrack_Hardware` directory and execute the main Python script:
+
+    ```
+    sudo python3 main.py
+    ```
+
+    *Use `sudo` to ensure the script has the necessary permissions to access the camera and GPIO pins.*
+
+6.  **Stopping the Device:**
+    To stop the script: Press Ctrl + C in the terminal. This will also trigger the GPIO cleanup.
 
 ## Contributing
 

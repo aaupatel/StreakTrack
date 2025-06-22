@@ -1,6 +1,4 @@
 export { authOptions } from "@/app/api/auth/[...nextauth]/options";
-
-// import type { NextAuthConfig } from "next-auth";
 // import CredentialsProvider from "next-auth/providers/credentials";
 // import bcrypt from "bcryptjs";
 
