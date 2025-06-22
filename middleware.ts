@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
   if (protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
     if (!token) {
       const loginUrl = new URL("/auth/login", request.url);
-      loginUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
+      loginUrl.searchParams.set("callbackUrl", request.nextUrl.href);
       return NextResponse.redirect(loginUrl);
     }
   }

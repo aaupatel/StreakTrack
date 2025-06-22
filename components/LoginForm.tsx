@@ -50,12 +50,13 @@ export default function LoginPage() {
         callbackUrl
       });
 
-      if (result?.error) {
-        toast.error(result.error);
-        return;
+      if (result?.ok) {
+        router.push(result.url || "/dashboard");
+      } else {
+        toast.error(result?.error || "Login failed");
       }
 
-    //   router.push(callbackUrl);
+      // router.push(callbackUrl);
       toast.success("Logged in successfully");
     } catch (error) {
       toast.error("Failed to login");
