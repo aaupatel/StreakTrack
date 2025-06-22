@@ -23,24 +23,32 @@ export async function GET(request: Request) {
       );
     }
 
-    const attendanceRecords = await Attendance.find({
+    const records = await Attendance.find({
       date: {
         $gte: new Date(startDate),
         $lte: new Date(endDate)
       }
     }).populate("studentId", "name enrollmentNo branch");
 
-    // Format data for Excel
-    const data = attendanceRecords.map(record => ({
-      Date: new Date(record.date).toLocaleDateString(),
-      "Student Name": record.studentId.name,
-      "Enrollment No": record.studentId.enrollmentNo,
-      Branch: record.studentId.branch,
-      Status: record.status,
-      "Marked By": record.method
-    }));
+    const studentMap = new Map();
 
-    return NextResponse.json(data);
+    records.forEach((rec) => {
+      const dateKey = new Date(rec.date).toISOString().split("T")[0];
+      const studentKey = rec.studentId.enrollmentNo;
+
+      if (!studentMap.has(studentKey)) {
+        studentMap.set(studentKey, {
+          Name: rec.studentId.name,
+          EnrollmentNo: rec.studentId.enrollmentNo,
+          Branch: rec.studentId.branch,
+        });
+      }
+      studentMap.get(studentKey)[dateKey] =
+        rec.status === "present" ? "P" : "A";
+    });
+    const result = Array.from(studentMap.values());
+
+    return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to export attendance" },

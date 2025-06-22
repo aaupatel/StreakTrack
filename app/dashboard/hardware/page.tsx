@@ -29,9 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Camera, Power, RefreshCw, Plus, Cctv, UserCheck } from "lucide-react";
+import { Camera, Power, RefreshCw, Plus, Cctv, UserCheck, Github } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
+import HarwdwareSetupDiagram from "@/public/Hardware-Setup.jpg"
 
 const deviceFormSchema = z.object({
   name: z.string().min(2, "Device name is required"),
@@ -122,7 +123,10 @@ export default function HardwarePage() {
             const base64Data = data.frame;
             setVideoFeedSource(`data:image/jpeg;base64,${base64Data}`);
             setLoader(false);
-          } else if ((data.type === "attendance" || data.type === "detected") && data.student) {
+          } else if (
+            (data.type === "attendance" || data.type === "detected") &&
+            data.student
+          ) {
             setLastDetection(data.student);
           }
         } catch (error) {
@@ -432,7 +436,6 @@ export default function HardwarePage() {
               >
                 {loader ? (
                   <div className="flex justify-center items-center w-full h-full">
-                    Spinner
                     <div className="loader"></div>
                   </div>
                 ) : (
@@ -451,8 +454,7 @@ export default function HardwarePage() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
-            </div>
+            <div className="flex flex-col gap-4"></div>
           )}
         </Card>
       </div>
@@ -472,10 +474,10 @@ export default function HardwarePage() {
               <p>
                 <strong>Enrollment No:</strong> {lastDetection.enrollmentNo}
               </p>
-              <p>
+              {/* <p>
                 <strong>Confidence:</strong>{" "}
-                {/* {(lastDetection.confidence * 100).toFixed(2)}% */}
-              </p>
+                {(lastDetection.confidence * 100).toFixed(2)}%
+              </p> */}
               {lastDetection.timestamp && (
                 <p>
                   <strong>Timestamp:</strong>{" "}
@@ -493,28 +495,197 @@ export default function HardwarePage() {
           <p className="text-gray-500">No recent detections</p>
         )}
       </Card>
-      {/* <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">Setup Instructions</h2>
-        <div className="space-y-4">
+
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">
+          Setup Instructions for Raspberry Pi Hardware
+        </h2>
+        <div className="space-y-6">
           <div className="space-y-2">
             <h3 className="font-medium">1. Hardware Requirements</h3>
-            <ul className="list-disc list-inside text-sm text-gray-600">
-              <li>Raspberry Pi (3 or newer)</li>
-              <li>Pi Camera Module</li>
-              <li>Internet Connection</li>
+            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+              <li>Raspberry Pi (tested with Raspberry Pi 4 recommended)</li>
+              <li>Raspberry Pi Camera Module V2 (or compatible)</li>
+              <li>LCD Display (20x4 I2C)</li>
+              <li>Assorted LEDs (Green, Yellow, Blue, Red)</li>
+              <li>Jumper wires</li>
+              <li>Power supply for Raspberry Pi</li>
             </ul>
           </div>
+
           <div className="space-y-2">
-            <h3 className="font-medium">2. Installation Steps</h3>
-            <ul className="list-disc list-inside text-sm text-gray-600">
-              <li>Connect the camera module</li>
-              <li>Configure network settings</li>
-              <li>Install required software</li>
-              <li>Set up the connection</li>
+            <h3 className="font-medium">2. Software Requirements</h3>
+            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+              <li>Raspberry Pi OS (or compatible)</li>
+              <li>Python 3</li>
+              <li>
+                Required Python libraries (install via `pip install -r
+                requirements.txt`):
+                <br />
+                `asyncio`, `websockets`, `aiohttp`, `opencv-python`, `RPi.GPIO`,
+                `picamera2`, `numpy`, `face_recognition`, `pickle`, `sqlite3`,
+                `RPLCD`
+              </li>
             </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="font-medium">3. Installation Steps</h3>
+            <ol className="list-decimal list-inside text-sm text-gray-600 space-y-2">
+              <li>
+                Clone the Repository:
+                <pre className="bg-gray-100 p-2 rounded-md mt-1 text-xs">
+                  <code>
+                    git clone https://github.com/aaupatel/StreakTrack_Hardware
+                  </code>
+                  <br />
+                  <code>cd StreakTrack_Hardware</code>
+                </pre>
+              </li>
+              <li>
+                Install Dependencies:
+                <pre className="bg-gray-100 p-2 rounded-md mt-1 text-xs">
+                  <code>pip install -r requirements.txt</code>
+                </pre>
+              </li>
+              <li>
+                Configure `config.json`: Create a `config.json` file in the
+                project root based on the example structure. Replace
+                placeholders with your actual WebSocket server URL, device ID,
+                and organization ID from your StreakTrack backend.
+                <pre className="bg-gray-100 p-2 rounded-md mt-1 text-xs">
+                  <code>
+                    {`{
+  "website_url": "YOUR_WEBSOCKET_SERVER_URL",
+  "deviceId": "YOUR_DEVICE_ID",
+  "organizationId": "YOUR_ORGANIZATION_ID"
+}`}
+                  </code>
+                </pre>
+                <p className="text-xs text-gray-500 mt-2">
+                  (You can find your `organizationId` on your Profile page and
+                  your `deviceId` in the &quot;Device Status&quot; section on
+                  this page.)
+                </p>
+              </li>
+              <li>
+                Hardware Setup:
+                <ul className="list-disc list-inside pl-4 mt-1">
+                  <li>
+                    Connect the Raspberry Pi Camera Module to the CSI port.
+                  </li>
+                  <li>
+                    Connect the LCD display to the Raspberry Pi&apos;s I2C pins
+                    (SDA to GPIO2, SCL to GPIO3, VCC to 5V, GND to GND).
+                  </li>
+                  <li>
+                    Connect LEDs to specified GPIO pins (GREEN: 32, YELLOW: 36,
+                    BLUE: 38, RED: 40) via suitable current-limiting resistors.
+                  </li>
+                </ul>
+                <Image
+                  className="w-full"
+                  src={HarwdwareSetupDiagram}
+                  alt="Camera Feed"
+                />
+              </li>
+            </ol>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="font-medium">4. Usage</h3>
+            <ol className="list-decimal list-inside text-sm text-gray-600 space-y-2">
+              <li>
+                Run the `main.py` script:
+                <pre className="bg-gray-100 p-2 rounded-md mt-1 text-xs">
+                  <code>sudo python3 main.py</code>
+                </pre>
+                Use `sudo` for camera and GPIO access.
+              </li>
+              <li>
+                System Operation:
+                <ul className="list-disc list-inside pl-4 mt-1">
+                  <li>
+                    Upon startup, the system connects to the WebSocket server
+                    (Blue LED, &quot;Connected&quot; on LCD).
+                  </li>
+                  <li>Downloads student data and encodes faces.</li>
+                  <li>Continuously captures frames for face recognition.</li>
+                  <li>
+                    Face Detected: Yellow LED blinks, &quot;Please Wait...&quot;
+                    on LCD.
+                  </li>
+                  <li>
+                    Recognized Student (New): Green LED, name + &quot;Attendance
+                    marked&quot; on LCD.
+                  </li>
+                  <li>
+                    Recognized Student (Already Marked): Yellow LED blinks, name
+                    + &quot;Already marked&quot; on LCD.
+                  </li>
+                  <li>
+                    Unknown Person: &quot;Unknown Person&quot; on LCD, Red LED
+                    blinks.
+                  </li>
+                  <li>Live camera feed streams to web server (if enabled).</li>
+                </ul>
+              </li>
+              <li>
+                Stopping the script: Press `Ctrl + C` in the terminal to stop.
+              </li>
+            </ol>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="font-medium">5. Visual References</h3>
+            <p className="text-sm text-gray-600">
+              See the hardware setup and project in action:
+            </p>
+            <ul className="list-disc list-inside text-sm text-gray-600">
+              <li>
+                <a
+                  href="https://drive.google.com/file/d/1eoePbuF3EOnD7c0TiVFzEvZSk15-w-DS/view?usp=sharing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  View Hardware Setup Image
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://drive.google.com/file/d/1HgUuK3of8s1_pdb_d9jcTD0ppCf6IIxp/view?usp=sharing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  Watch Project Explanation Video
+                </a>
+              </li>
+            </ul>
+            <p className="text-xs text-gray-500 mt-2">
+              (These links are publicly accessible and shared with appropriate
+              permissions)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="font-medium">6. Project Code</h3>
+            <p className="text-sm text-gray-600">
+              Access the full source code for StreakTrack Hardware Setup on
+              GitHub:
+            </p>
+            <a
+              href="https://github.com/aaupatel/StreakTrack_Hardware"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline font-semibold"
+            >
+              https://github.com/aaupatel/StreakTrack_Hardware
+            </a>
           </div>
         </div>
-      </Card> */}
+      </Card>
     </div>
   );
 }

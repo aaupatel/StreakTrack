@@ -274,6 +274,9 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground">
                   Type: {organization.type || "N/A"}
                 </p>
+                <p className="text-sm text-muted-foreground">
+                  Organization Id: {organization._id}
+                </p>
               </CardContent>
             </Card>
 

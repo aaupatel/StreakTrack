@@ -15,6 +15,7 @@ import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { getDaysInMonth } from "date-fns";
 import { cn } from "@/lib/utils";
+import * as XLSX from "xlsx";
 
 interface MonthlyAttendanceRecord {
   Name: string;
@@ -98,8 +99,7 @@ export default function AttendancePage() {
 
   const exportAttendance = async () => {
     try {
-      const startDate = new Date(date);
-      startDate.setDate(1);
+      const startDate = new Date(date.getFullYear(), date.getMonth(), 1);
       const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
       const response = await fetch(
@@ -110,28 +110,37 @@ export default function AttendancePage() {
 
       const data = await response.json();
 
-      // Convert to CSV
-      const headers = Object.keys(data[0]);
+      // Extract all unique dates
+      const allDates = new Set<string>();
+      data.forEach((row: any) => {
+        Object.keys(row).forEach((key) => {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+            allDates.add(key);
+          }
+        });
+      });
+
+      const sortedDates = Array.from(allDates).sort();
+
+      const headers = ["Name", "Branch", ...sortedDates];
+
       const csv = [
         headers.join(","),
-        ...data.map((row: any) =>
-          headers.map((header) => row[header]).join(",")
-        ),
+        ...data.map((row: any) => headers.map((h) => row[h] ?? "A").join(",")),
       ].join("\n");
 
-      // Download file
       const blob = new Blob([csv], { type: "text/csv" });
-      const url = window.URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `attendance-${date.toISOString().split("T")[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      URL.revokeObjectURL(url);
 
       toast.success("Attendance exported successfully");
-    } catch (error) {
+    } catch (err) {
       toast.error("Failed to export attendance");
     }
   };
