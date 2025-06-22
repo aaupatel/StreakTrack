@@ -5,7 +5,7 @@ import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import Organization from "@/models/Organization";
 
-export const options: NextAuthOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -38,7 +38,7 @@ export const options: NextAuthOptions = {
           // Fetch organization details if user is linked to an organization
           let organization = null;
           if (user.organizationId) {
-            organization = await Organization.findById(user.organizationId).lean();
+            organization = await Organization.findById(user.organizationId);
           }
 
           return {

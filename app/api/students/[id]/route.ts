@@ -108,6 +108,10 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.organizationId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
         await connectDB();
         const studentId = getIdFromParams(request);
 
