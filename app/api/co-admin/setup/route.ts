@@ -6,13 +6,6 @@ export async function POST(request: Request) {
   try {
     const { token, password, contactNo, name } = await request.json();
 
-    if (!token) {
-      return NextResponse.json(
-        { error: "Invalid token" },
-        { status: 400 }
-      );
-    }
-
     await connectDB();
 
     const user = await User.findOne({ verificationToken: token });
