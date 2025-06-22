@@ -1,42 +1,53 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 
 if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env');
+  throw new Error("Please define the MONGODB_URI environment variable inside .env");
 }
 
-let cached = global.mongoose;
+// Define a type for the cached connection
+type MongooseCache = {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
+};
 
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+// Attach it to the global object with optional chaining
+declare global {
+  var _mongooseCache: MongooseCache | undefined;
 }
 
-async function connectDB() {
-  if (cached.conn) {
-    console.log("Already connected to the database");
-    return cached.conn;
+// Initialize the cache if not already done
+const globalCache: MongooseCache = global._mongooseCache ?? {
+  conn: null,
+  promise: null,
+};
+
+global._mongooseCache = globalCache;
+
+async function connectDB(): Promise<typeof mongoose> {
+  if (globalCache.conn) {
+    console.log("✅ Already connected to MongoDB");
+    return globalCache.conn;
   }
 
-  if (!cached.promise) {
-    const opts = {
+  if (!globalCache.promise) {
+    console.log("🔄 Connecting to MongoDB...");
+    globalCache.promise = mongoose.connect(MONGODB_URI, {
       bufferCommands: false,
-    };
-
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log("Database connected successfully");
-      return mongoose;
     });
   }
 
   try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
+    globalCache.conn = await globalCache.promise;
+    console.log("✅ Connected to MongoDB successfully");
+  } catch (error) {
+    globalCache.promise = null;
+    console.error("❌ Failed to connect to MongoDB", error);
+    throw error;
   }
 
-  return cached.conn;
+  return globalCache.conn;
 }
 
 export default connectDB;
