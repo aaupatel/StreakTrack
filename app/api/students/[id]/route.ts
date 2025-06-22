@@ -1,11 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import connectDB from "@/lib/mongodb";
 import Student from "@/models/Student";
 import { authOptions } from "@/lib/auth";
 import { deleteFromCloudinary, uploadToCloudinary } from "@/lib/cloudinary";
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+// Helper to extract params
+function getIdFromParams(request: NextRequest): string {
+    const url = new URL(request.url);
+    const segments = url.pathname.split("/");
+    return segments[segments.length - 1];
+}
+
+export async function PUT(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         if (
@@ -17,8 +24,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         }
 
         await connectDB();
-        const studentId = await params.id;
-        console.log(studentId)
+        const studentId = getIdFromParams(request);
         const data = await request.json();
 
         const student = await Student.findById(studentId);
@@ -30,22 +36,16 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         const updatedIndices: number[] = data.updatedIndices || [];
         const updatedBase64s: string[] = data.updatedImages || [];
 
-        // Handle image updates only if base64s and indices are provided
         if (updatedBase64s.length > 0 && updatedIndices.length > 0) {
-            // Fix base64 format before uploading
-            const formattedBase64s = updatedBase64s.map((img) => {
-                if (img.startsWith("data:image/")) return img;
-                return `data:image/png;base64,${img}`;
-            });
+            const formattedBase64s = updatedBase64s.map((img) =>
+                img.startsWith("data:image/") ? img : `data:image/png;base64,${img}`
+            );
 
-            // Delete old images from Cloudinary
             const imagesToDelete = updatedIndices.map((index) => currentImages[index]);
             await deleteFromCloudinary(imagesToDelete);
 
-            // Upload new images to Cloudinary
             const uploadedUrls = await uploadToCloudinary(formattedBase64s);
 
-            // Update the image URLs in place
             for (let i = 0; i < updatedIndices.length; i++) {
                 currentImages[updatedIndices[i]] = uploadedUrls[i];
             }
@@ -78,14 +78,16 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.organizationId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+
         await connectDB();
-        const studentId = await params.id;
+        const studentId = getIdFromParams(request);
+
         const student = await Student.findById(studentId);
         if (!student) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 });
@@ -104,14 +106,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
     }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.organizationId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
         await connectDB();
-        const studentId = await params.id;
+        const studentId = getIdFromParams(request);
 
         const student = await Student.findByIdAndDelete(studentId);
 
@@ -119,8 +117,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
             return new NextResponse("Student not found", { status: 404 });
         }
 
-        // Optionally, delete the student's images from Cloudinary here.
-
+        // Optionally delete Cloudinary images
         return new NextResponse("Student deleted successfully", { status: 200 });
     } catch (error: any) {
         console.error("Error deleting student:", error);
